@@ -1,0 +1,3 @@
+[submodule "turnip_prophet"]
+	path = turnip_prophet
+	url = https://github.com/mikebryant/ac-nh-turnip-prices

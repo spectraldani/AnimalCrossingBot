@@ -1,0 +1,99 @@
+const fs = require('fs');
+const { build_export_table } = require('./src/order_types.js');
+const { Bot } = require('./src/telegram.js');
+
+const orders = {};
+orders.as = function(arguments, _, database, orderer) {
+	if (arguments.length < 2) {
+		return `Invalid number of arguments`;
+	}
+
+	var [island_name, order_key, ...arguments] = arguments;
+	const result = find_island_by_name(island_name, database.islands);
+	const [order_id, island] = result;
+
+	if (island === null) {
+		return `Unknown island \`${island_name}\``;
+	}
+
+	return handle_command({id:order_id}, [order_key, arguments], database, false);
+}
+orders.as.alias = ['como'];
+orders.as.can_mut = true; // hack to avoid '/as x /as x ...'
+orders.as.help = [
+	'Run command as if you were in another island'
+];
+
+
+const order_lists = [
+	orders,
+	require('./src/island_orders.js'),
+	require('./src/turnip_orders.js'),
+];
+
+const all_orders = order_lists.flatMap(build_export_table);
+
+function find_island_by_name(name, islands) {
+	name = name.toLowerCase();
+	for (const [id, island] of Object.entries(islands)) {
+		if (island.name.toLowerCase() == name) {
+			return [id, island];
+		}
+	}
+	return [null, null];
+}
+
+function handle_command(orderer, command, database, can_mut) {
+	let [order_key, arguments] = command;
+	let island = database.islands[orderer.id];
+
+	for (const order_list of order_lists) {
+		const order = order_list[order_key];
+		if (order !== undefined) {
+			if (!can_mut && order.mut) {
+				return 'No permission to run that command';
+			} else {
+				return order(arguments, island, database, orderer);
+			}
+		}
+	}
+
+	return null;
+}
+
+
+const database = JSON.parse(fs.readFileSync('data.json', 'utf8'));
+if (!database.bot_token && !database.chat_id) {
+	throw "Missing bot_token or chat_id in database";
+}
+const bot = new Bot(database.bot_token);
+
+(async () => {
+	const bot_commands = {
+		commands: order_lists
+			.flatMap(x=> Object.entries(x))
+			.map(([k,v]) => ({command:k, description:v.help[0]}))
+	};
+	const response = await bot.post('setMyCommands', bot_commands);
+	console.log('Send commands!', await response.json());
+})().catch(console.error);
+
+(async () => {
+	for await (const command of bot.stream_commands()) {
+		if (command.chat.id == database['chat_id']) {
+			let response;
+			try {
+				response = handle_command(command.from, command.command, database, true);
+			} catch(e) {
+				console.error(command,e);
+				response = 'Error:```\n'+JSON.stringify(e, Object.getOwnPropertyNames(e))+'```';
+			}
+			if (response !== null) {
+				await bot.reply(command, response);
+			} else {
+				console.warn(command)
+			}
+		}
+		fs.writeFileSync('data.json', JSON.stringify(database));
+	}
+})().catch(console.error);
