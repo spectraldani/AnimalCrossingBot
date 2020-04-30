@@ -47,7 +47,7 @@ function handle_command(orderer, command, database, can_mut) {
 	let [order_key, arguments] = command;
 	let island = database.islands[orderer.id];
 
-	for (const order_list of order_lists) {
+	for (const order_list of all_orders) {
 		const order = order_list[order_key];
 		if (order !== undefined) {
 			if (!can_mut && order.mut) {
@@ -85,13 +85,13 @@ const bot = new Bot(database.bot_token);
 			try {
 				response = handle_command(command.from, command.command, database, true);
 			} catch(e) {
-				console.error(command,e);
+				console.error(e,command);
 				response = 'Error:```\n'+JSON.stringify(e, Object.getOwnPropertyNames(e))+'```';
 			}
 			if (response !== null) {
 				await bot.reply(command, response);
 			} else {
-				console.warn(command)
+				console.warn('null reply',command)
 			}
 		}
 		fs.writeFileSync('data.json', JSON.stringify(database));
