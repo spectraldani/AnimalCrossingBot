@@ -78,6 +78,7 @@ module.exports.Bot = function(bot_token) {
 						chat: update.message.chat,
 						from: update.message.from,
 						message_id: update.message.message_id,
+						date: update.message.date,
 						command
 					};
 			}

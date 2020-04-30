@@ -1,8 +1,8 @@
 const vm = require('vm');
 const fs = require('fs');
+const moment = require('moment-timezone');
 
 const prophet_path = './turnip_prophet/js/predictions.js'
-
 vm.runInThisContext(fs.readFileSync(prophet_path, 'utf8'))
 global['i18next'] = {t: (x) => x.split('.')[1].toUpperCase()}
 PATTERN['UNKNOWN'] = -1;
@@ -48,6 +48,8 @@ const WEEK_DAYS = {
 	SÁBADO:    6,
 }
 
+const NUMBER_TO_DAY = ['Su', 'Mo','Tu','We','Th','Fr','Sa'];
+
 function turnip_probabilities(island) {
 	const prices = island.turnip_prices;
 
@@ -88,35 +90,46 @@ function probability_greater(dist, x) {
 let orders = {};
 
 orders.turnip = (arguments, island) => {
-	let [day, time, price] = arguments;
+	let day, time, price;
 
-	price = parseInt(price);
-	if (isNaN(price)) {
-		return `Invalid price: \`${price}\``;
-	}
+	if (arguments.length == 3) {
+		[day, time, price] = arguments;
+		price = parseInt(price);
+		if (isNaN(price)) {
+			return `Invalid price: \`${price}\``;
+		}
 
-	day = WEEK_DAYS[day.toUpperCase()];
-	if (day === undefined) {
-		return `Invalid day: \`${day}\``;
-	}
+		day = WEEK_DAYS[day.toUpperCase()];
+		if (day === undefined) {
+			return `Invalid day: \`${day}\``;
+		}
 
-	time = time.toUpperCase();
-	if (time !== 'AM' && time !== 'PM') {
-		return `Invalid time: \`${time}\``;
-	}
-	if (time === 'AM') {
-		time = 0
+		time = time.toUpperCase();
+		if (time !== 'AM' && time !== 'PM') {
+			return `Invalid time: \`${time}\``;
+		}
+	} else if (arguments.length == 1) {
+		price = parseInt(arguments[0]);
+		if (isNaN(price)) {
+			return `Invalid price: \`${price}\``;
+		}
+
+		[day, time] = moment().tz(island.timezone).format('d A').split(' ');
 	} else {
-		time = 1
+		return 'Invalid number of arguments';
 	}
 
 	if (day == 0) {
+		// island.past_turnip_pattern = -1;
+		// island.turnip_prices.fill(NaN);
 		island.turnip_prices[0] = price;
 		island.turnip_prices[1] = price;
+		return `Set! Starting new week...`;
 	} else {
-		island.turnip_prices[(day*2) + time] = price;
+		let index = (time === 'AM') ? 0 : 1;
+		island.turnip_prices[(day*2) + index] = price;
+		return `Set price for ${NUMBER_TO_DAY[day]} ${time}`;
 	}
-	return 'Set!';
 };
 orders.turnip.alias = ['nabos', 'nabo', 'turnips'];
 orders.turnip.mut = true;
@@ -140,9 +153,6 @@ orders.past_pattern.mut = true;
 orders.past_pattern.help = [
 	'Sets the turnip price pattern of the previous week'
 ];
-
-
-const NUMBER_TO_DAY = ['Mo','Tu','We','Th','Fr','Sa'];
 
 orders.probabilities = (arguments, island) => {
 	if (arguments.length == 0) {
@@ -187,10 +197,11 @@ orders.probabilities = (arguments, island) => {
 				}
 			}
 
+			const today = +(moment().tz(island.timezone).format('d'));
 			let output = 'Your profit probability is:\n```\n';
-			for (let i = 2; i < 14; i++) {
+			for (let i = today*2; i < 14; i++) {
 				if (i % 2 == 0) {
-					output += NUMBER_TO_DAY[i/2 - 1];
+					output += NUMBER_TO_DAY[i/2];
 					output += ' AM ';
 				} else {
 					output += '   PM ';

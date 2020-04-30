@@ -1,4 +1,5 @@
 const fs = require('fs');
+const moment = require('moment-timezone');
 const { Island, FRUITS } = require('./types.js')
 
 const fruit_emoji = {
@@ -30,7 +31,8 @@ function format_islands(islands) {
 			start_open = false;
 		}
 
-		message += `*${island.name}* ${fruit_emoji[island.native_fruit]}`;
+		message += `*${island.name}* ${fruit_emoji[island.native_fruit]} `;
+		message += `\\[${moment().tz(island.timezone).format('A')}]`;
 		message += '\n'
 
 		if (island.username) {
@@ -45,14 +47,14 @@ function format_islands(islands) {
 let orders = {};
 
 orders.register = (arguments, island, database, orderer) => {
-	let [name, fruit] = arguments;
+	let [name, fruit, timezone] = arguments;
 	fruit = FRUITS[fruit.toUpperCase()];
 
 	if (fruit == undefined) {
 		return `Invalid fruit \`${arguments[1]}\``;
 	}
 
-	database.islands[orderer.id] = new Island(orderer.username, name, fruit)
+	database.islands[orderer.id] = new Island(orderer.username, name, fruit, timezone)
 	return `Registered ${name}!`;
 };
 orders.register.alias = ['registrar'];

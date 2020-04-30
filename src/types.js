@@ -16,10 +16,11 @@ module.exports.FRUITS = {
 	PÊRA: 4,
 };
 
-module.exports.Island = function(username, island_name, fruit) {
+module.exports.Island = function(username, island_name, fruit, time_offset) {
 	this.username = username;
 	this.name = island_name;
-	this.native_fruit = fruit
+	this.native_fruit = fruit;
+	this.timezone = timezone;
 
 	this.open = false;
 	this.dodo = null;

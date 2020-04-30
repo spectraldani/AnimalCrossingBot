@@ -9,6 +9,8 @@
   "author": "Daniel Augusto",
   "license": "MIT",
   "dependencies": {
+    "moment": "^2.24.0",
+    "moment-timezone": "^0.5.28",
     "node-fetch": "^2.6.0"
   }
 }
