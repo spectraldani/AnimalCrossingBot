@@ -3,20 +3,22 @@ const { build_export_table } = require('./src/order_types.js');
 const { Bot } = require('./src/telegram.js');
 
 const orders = {};
-orders.as = function(arguments, _, database, orderer) {
+orders.as = function(arguments, island, command, database) {
 	if (arguments.length < 2) {
 		return `Invalid number of arguments`;
 	}
 
 	var [island_name, order_key, ...arguments] = arguments;
-	const result = find_island_by_name(island_name, database.islands);
-	const [order_id, island] = result;
+	const [user_id] = find_island_by_name(island_name, database.islands);
 
-	if (island === null) {
+	if (user_id === null) {
 		return `Unknown island \`${island_name}\``;
 	}
 
-	return handle_command({id:order_id}, [order_key, arguments], database, false);
+	command.from = { id : user_id };
+	command.order = [order_key, arguments];
+
+	return handle_command(command, database, false);
 }
 orders.as.alias = ['como'];
 orders.as.can_mut = true; // hack to avoid '/as x /as x ...'
@@ -43,9 +45,9 @@ function find_island_by_name(name, islands) {
 	return [null, null];
 }
 
-function handle_command(orderer, command, database, can_mut) {
-	let [order_key, arguments] = command;
-	let island = database.islands[orderer.id];
+function handle_command(command, database, can_mut) {
+	let [order_key, arguments] = command.order;
+	let island = database.islands[command.from.id];
 
 	for (const order_list of all_orders) {
 		const order = order_list[order_key];
@@ -53,7 +55,7 @@ function handle_command(orderer, command, database, can_mut) {
 			if (!can_mut && order.mut) {
 				return 'No permission to run that command';
 			} else {
-				return order(arguments, island, database, orderer);
+				return order(arguments, island, command, database);
 			}
 		}
 	}
@@ -83,7 +85,7 @@ const bot = new Bot(database.bot_token);
 		if (command.chat.id == database['chat_id']) {
 			let response;
 			try {
-				response = handle_command(command.from, command.command, database, true);
+				response = handle_command(command, database, true);
 			} catch(e) {
 				console.error(e,command);
 				response = 'Error:```\n'+JSON.stringify(e, Object.getOwnPropertyNames(e))+'```';

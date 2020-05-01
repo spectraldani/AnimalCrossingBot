@@ -89,7 +89,7 @@ function probability_greater(dist, x) {
 
 let orders = {};
 
-orders.turnip = (arguments, island) => {
+orders.turnip = (arguments, island, command) => {
 	let day, time, price;
 
 	if (arguments.length == 3) {
@@ -114,7 +114,8 @@ orders.turnip = (arguments, island) => {
 			return `Invalid price: \`${price}\``;
 		}
 
-		[day, time] = moment().tz(island.timezone).format('d A').split(' ');
+		const island_date = command.date.tz(island.timezone);
+		[day, time] = island_date.format('d A').split(' ');
 	} else {
 		return 'Invalid number of arguments';
 	}

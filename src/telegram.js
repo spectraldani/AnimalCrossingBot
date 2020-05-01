@@ -1,5 +1,6 @@
 const https = require('https');
 const fetch = require('node-fetch');
+const moment = require('moment-timezone');
 
 const base_url = 'https://api.telegram.org/bot';
 
@@ -72,14 +73,14 @@ module.exports.Bot = function(bot_token) {
 	this.stream_commands = async function*() {
 		for await (const update of this.stream_updates()) {
 			if ('message' in update) {
-				const command = parse_command(update.message.text);
-				if (command !== null)
+				const order = parse_order(update.message.text);
+				if (order !== null)
 					yield {
 						chat: update.message.chat,
 						from: update.message.from,
 						message_id: update.message.message_id,
-						date: update.message.date,
-						command
+						date: moment.unix(update.message.date).utc(),
+						order
 					};
 			}
 		}
@@ -105,7 +106,7 @@ module.exports.Bot = function(bot_token) {
 }
 
 
-function parse_command(string) {
+function parse_order(string) {
 	if (!string) {
 		return null;
 	}

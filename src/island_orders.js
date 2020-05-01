@@ -46,7 +46,7 @@ function format_islands(islands) {
 
 let orders = {};
 
-orders.register = (arguments, island, database, orderer) => {
+orders.register = (arguments, island, command, database) => {
 	let [name, fruit, timezone] = arguments;
 	fruit = FRUITS[fruit.toUpperCase()];
 
@@ -54,7 +54,7 @@ orders.register = (arguments, island, database, orderer) => {
 		return `Invalid fruit \`${arguments[1]}\``;
 	}
 
-	database.islands[orderer.id] = new Island(orderer.username, name, fruit, timezone)
+	database.islands[command.from.id] = new Island(command.from.username, name, fruit, timezone)
 	return `Registered ${name}!`;
 };
 orders.register.alias = ['registrar'];
@@ -63,8 +63,8 @@ orders.register.help = [
 	'Register your island in our registry'
 ];
 
-orders.list = (arguments, island, database) => (
-	format_islands(database['islands'])
+orders.list = (arguments, island, command, database) => (
+	format_islands(database.islands)
 );
 orders.list.alias = ['ilhas','listar'];
 orders.list.help = [
