@@ -70,7 +70,11 @@ function turnip_probabilities(island) {
 	console = {log() {}};
 	const probabilities = predictor.analyze_possibilities();
 	console = old_console;
-	return probabilities;
+	if (probabilities.length == 1) {
+		throw 'Impossible prices!';
+	} else {
+		return probabilities;
+	}
 }
 
 function probability_greater(dist, x) {
@@ -121,11 +125,20 @@ orders.turnip = (arguments, island, command) => {
 	}
 
 	if (day == 0) {
-		// island.past_turnip_pattern = -1;
-		// island.turnip_prices.fill(NaN);
+		const all_probabilities = turnip_probabilities(island);
+		const patterns = current_pattern_probabilities(all_probabilities);
+		island.past_turnip_pattern = patterns.findIndex(x => x > 0.99984);
+		island.turnip_prices.fill(NaN);
 		island.turnip_prices[0] = price;
 		island.turnip_prices[1] = price;
-		return `Set! Starting new week...`;
+		island.current_buy_price = null;
+
+		let message = 'Set! Starting new week...\n';
+		if (island.past_turnip_pattern !== -1) {
+			message += `Your past pattern was ${island.past_turnip_pattern}`;
+		}
+
+		return message;
 	} else {
 		let index = (time === 'AM') ? 0 : 1;
 		island.turnip_prices[(day*2) + index] = price;
@@ -155,6 +168,18 @@ orders.past_pattern.help = [
 	'Sets the turnip price pattern of the previous week'
 ];
 
+const PATTERN_NAMES = [
+	'Fluctuating', 'Large Spike', 'Decreasing', 'Small Spike'
+];
+
+function current_pattern_probabilities(all_probabilities) {
+	const patterns = [0,0,0,0];
+	for (let pattern of all_probabilities.slice(1)) {
+		patterns[pattern.pattern_number] = pattern.category_total_probability;
+	}
+	return patterns;
+}
+
 orders.probabilities = (arguments, island) => {
 	if (arguments.length == 0) {
 		return 'Missing arguments';
@@ -165,22 +190,28 @@ orders.probabilities = (arguments, island) => {
 	switch (type) {
 		case 'padrão':
 		case 'pattern': {
-			let output = 'Your current pattern is:\n\n';
-			const patterns = [0,0,0,0];
-			for (let pattern of all_probabilities.slice(1)) {
-				patterns[pattern.pattern_number] = pattern.category_total_probability * 100;
+			let output = 'Your current pattern is:\n';
+			const patterns = current_pattern_probabilities(all_probabilities);
+			for (let i = 0; i < 4; i++) {
+				const prob = (patterns[i] * 100)
+				if (prob >= 1) {
+					output += `${PATTERN_NAMES[i]}: ${prob.toFixed(2);}%\n`;
+				}
 			}
-			output += `Fluctuating: ${(patterns[0]).toFixed(2)}%\n`;
-			output += `Large Spike: ${(patterns[1]).toFixed(2)}%\n`;
-			output += `Decreasing: ${(patterns[2]).toFixed(2)}%\n`;
-			output += `Small Spike: ${(patterns[3]).toFixed(2)}%\n`;
 			return output;
 		}
 		case 'lucro':
 		case 'profit': {
-			const valor = parseInt(arguments[1]);
-			if (isNaN(valor)) {
-				return `Invalid buy price \`${arguments[1]}\``;
+			let valor;
+			if (arguments.length >= 2) {
+				valor = parseInt(arguments[1]);
+				if (isNaN(valor)) {
+					return `Invalid buy price \`${arguments[1]}\``;
+				}
+			} else if (island.current_buy_price !== null) {
+				valor = island.current_buy_price;
+			} else {
+				return 'No buy price stored!';
 			}
 
 			const marginals = all_probabilities.slice(1).map(x => [
@@ -234,6 +265,20 @@ orders.max_sell_price = (arguments, island) => {
 orders.max_sell_price.alias = ['preço_máximo','max_price'];
 orders.max_sell_price.help = [
 	'Get the maximum selling price for turnips this week'
+];
+
+orders.turnip_buy_price = (arguments, island) => {
+	let [ price ] = arguments;
+	price = parseInt(price);
+	if (isNaN(price)) {
+		return 'Invalid buy price';
+	}
+	island.current_buy_price = price;
+	return 'Set!';
+}
+orders.turnip_buy_price.alias = ['preço_compra_nabo'];
+orders.turnip_buy_price.help = [
+	'Set the price you bought turnips this week'
 ];
 
 orders.turnip_prophet = (arguments, island) => {
