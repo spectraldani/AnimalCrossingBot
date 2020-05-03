@@ -56,11 +56,7 @@ const PATTERN_NAMES = {
 }
 
 function turnip_probabilities(island) {
-	const prices = island.turnip_prices;
-
-	if (island.past_turnip_pattern === null ) {
-		island.past_turnip_pattern = -1;
-	}
+	const prices = island.turnips.prices;
 
 	for (let i = 0; i < prices.length; i++) {
 		if (prices[i] === null) {
@@ -68,7 +64,7 @@ function turnip_probabilities(island) {
 		}
 	}
 	let predictor = new Predictor(
-		prices, false, island.past_turnip_pattern
+		prices, false, island.turnips.past_pattern
 	);
 
 	old_console = console;
@@ -265,8 +261,8 @@ orders.probabilities = (arguments, island, command) => {
 				if (isNaN(valor)) {
 					return `Invalid buy price \`${arguments[1]}\``;
 				}
-			} else if (island.current_buy_price !== null) {
-				valor = island.current_buy_price;
+			} else if (island.turnips.buy_price) {
+				valor = island.turnips.buy_price;
 			} else {
 				return 'No buy price stored!';
 			}
