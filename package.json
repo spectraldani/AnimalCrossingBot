@@ -8,6 +8,7 @@
   "author": "Daniel Augusto",
   "license": "MIT",
   "dependencies": {
+    "@tensorflow/tfjs": "^1.7.4",
     "@types/moment": "^2.13.0",
     "@types/moment-timezone": "^0.5.13",
     "@types/node": "^13.13.4",

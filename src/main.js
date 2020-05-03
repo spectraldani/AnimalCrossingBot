@@ -2,14 +2,15 @@ const fs = require('fs');
 const moment = require('moment-timezone');
 const { build_export_table } = require('./order_types.js');
 const { Bot } = require('./telegram.js');
+const { orders: turnip_orders } = require('./turnips');
 
 const orders = {};
-orders.as = function(arguments, island, command, database) {
+orders.as = async function(arguments, island, command, database) {
 	if (arguments.length < 2) {
 		return `Invalid number of arguments`;
 	}
 
-	var [island_name, order_key, ...arguments] = arguments;
+	let [island_name, order_key, ...arguments] = arguments;
 	const [user_id] = find_island_by_name(island_name, database.islands);
 
 	if (user_id === null) {
@@ -19,8 +20,8 @@ orders.as = function(arguments, island, command, database) {
 	command.from = { id : user_id };
 	command.order = [order_key, arguments];
 
-	return handle_command(command, database, false);
-}
+	return await handle_command(command, database, false);
+};
 orders.as.alias = ['como'];
 orders.as.can_mut = true; // hack to avoid '/as x /as x ...'
 orders.as.help = [
@@ -31,7 +32,7 @@ orders.as.help = [
 const order_lists = [
 	orders,
 	require('./island_orders.js'),
-	require('./turnip_orders.js'),
+	turnip_orders,
 ];
 
 const all_orders = order_lists.flatMap(build_export_table);
@@ -39,14 +40,14 @@ const all_orders = order_lists.flatMap(build_export_table);
 function find_island_by_name(name, islands) {
 	name = name.toLowerCase();
 	for (const [id, island] of Object.entries(islands)) {
-		if (island.name.toLowerCase() == name) {
+		if (island.name.toLowerCase() === name) {
 			return [id, island];
 		}
 	}
 	return [null, null];
 }
 
-function handle_command(command, database, can_mut) {
+async function handle_command(command, database, can_mut) {
 	let [order_key, arguments] = command.order;
 	let island = database.islands[command.from.id];
 
@@ -56,7 +57,7 @@ function handle_command(command, database, can_mut) {
 			if (!can_mut && order.mut) {
 				return 'No permission to run that command';
 			} else {
-				return order(arguments, island, command, database);
+				return await order(arguments, island, command, database);
 			}
 		}
 	}
@@ -92,7 +93,7 @@ moment.locale('ac');
 		// if (command.chat.id == database['chat_id']) {
 			let response;
 			try {
-				response = handle_command(command, database, true);
+				response = await handle_command(command, database, true);
 			} catch(e) {
 				console.error(e,command);
 				response = 'Error:```\n'+JSON.stringify(e, Object.getOwnPropertyNames(e))+'```';
