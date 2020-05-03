@@ -24,12 +24,4 @@ module.exports.Island = function(username, island_name, fruit, time_offset) {
 
 	this.open = false;
 	this.dodo = null;
-
-	this.turnip_prices = [];
-	this.turnip_prices.length = 14;
-	this.turnip_prices.fill(NaN);
-
-	this.past_turnip_pattern = -1;
-
-	this.current_buy_price = null;
 }

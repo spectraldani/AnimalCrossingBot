@@ -50,6 +50,11 @@ const WEEK_DAYS = {
 
 const NUMBER_TO_DAY = ['Su', 'Mo','Tu','We','Th','Fr','Sa'];
 
+const PATTERN_NAMES = {
+	'-1': 'Unknown',
+	0:'Fluctuating', 1:'Large Spike', 2:'Decreasing', 3:'Small Spike'
+}
+
 function turnip_probabilities(island) {
 	const prices = island.turnip_prices;
 
@@ -91,10 +96,73 @@ function probability_greater(dist, x) {
 	}
 }
 
+function current_pattern_probabilities(all_probabilities) {
+	const patterns = [0,0,0,0];
+	for (let pattern of all_probabilities.slice(1)) {
+		patterns[pattern.pattern_number] = pattern.category_total_probability;
+	}
+	return patterns;
+}
+
+function reset_turnip_data(island, command) {
+	const island_date = command.date.tz(island.timezone);
+	island.turnips = {
+		past_pattern: -1,
+		prices: [],
+		buy_price: null,
+		date: { week: island_date.week(), year: island_date.weekYear()}
+	}
+	island.turnips.prices.length = 14
+	island.turnips.prices.fill(NaN);
+}
+
+function ensure_turnip_data_exists(island, command) {
+	if (island.turnips === undefined)
+		reset_turnip_data(island, command);
+}
+
+function is_turnip_data_current(island, command) {
+	const island_date = command.date.tz(island.timezone);
+	const current_date = {
+		week: island_date.week(), year: island_date.weekYear()
+	};
+
+	if (island.turnips.date.year < current_date.year) {
+		return false;
+	} else if (island.turnips.date.week < current_date.week) {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+/**
+ * This function will initialize Turnip data and start a new week if needed
+ * @returns {string} Empty message or description of actions taken
+ */
+function start_new_week_if_needed(island, command) {
+	let message = '';
+	ensure_turnip_data_exists(island, command);
+	if (!is_turnip_data_current(island, command)) {
+		message = 'Starting new week...\n';
+		reset_turnip_data(island, island_date);
+		const all_probabilities = turnip_probabilities(island);
+		const patterns = current_pattern_probabilities(all_probabilities);
+		island.past_turnip_pattern = patterns.findIndex(x => x > 0.99984);
+		if (island.past_turnip_pattern !== -1) {
+			message += `Your past pattern was ${PATTERN_NAMES[island.past_turnip_pattern]}\n`;
+		}
+	}
+	return message;
+}
+
 let orders = {};
 
 orders.turnip = (arguments, island, command) => {
 	let day, time, price;
+
+	const island_date = command.date.tz(island.timezone);
+	const [island_day, island_time] = island_date.format('d A').split(' ');
 
 	if (arguments.length == 3) {
 		[day, time, price] = arguments;
@@ -117,33 +185,23 @@ orders.turnip = (arguments, island, command) => {
 		if (isNaN(price)) {
 			return `Invalid price: \`${price}\``;
 		}
-
-		const island_date = command.date.tz(island.timezone);
-		[day, time] = island_date.format('d A').split(' ');
+		[day, time] = [island_day, island_time];
 	} else {
 		return 'Invalid number of arguments';
 	}
 
+	let message = start_new_week_if_needed(island, command);
+
 	if (day == 0) {
-		const all_probabilities = turnip_probabilities(island);
-		const patterns = current_pattern_probabilities(all_probabilities);
-		island.past_turnip_pattern = patterns.findIndex(x => x > 0.99984);
-		island.turnip_prices.fill(NaN);
 		island.turnip_prices[0] = price;
 		island.turnip_prices[1] = price;
-		island.current_buy_price = null;
-
-		let message = 'Set! Starting new week...\n';
-		if (island.past_turnip_pattern !== -1) {
-			message += `Your past pattern was ${island.past_turnip_pattern}`;
-		}
-
-		return message;
+		message += 'Set price for Su';
 	} else {
 		let index = (time === 'AM') ? 0 : 1;
 		island.turnip_prices[(day*2) + index] = price;
-		return `Set price for ${NUMBER_TO_DAY[day]} ${time}`;
+		message += `Set price for ${NUMBER_TO_DAY[day]} ${time}`;
 	}
+	return message;
 };
 orders.turnip.alias = ['nabos', 'nabo', 'turnips'];
 orders.turnip.mut = true;
@@ -151,7 +209,7 @@ orders.turnip.help = [
 	'Register turnip prices for a given day'
 ];
 
-orders.past_pattern = (arguments, island) => {
+orders.past_pattern = (arguments, island, command) => {
 	let pattern = arguments.join(' ');
 	pattern = PATTERN[pattern.replace(' ','_').toUpperCase()];
 
@@ -159,8 +217,16 @@ orders.past_pattern = (arguments, island) => {
 		return `Invalid pattern \`${pattern}\``
 	}
 
+	let message = '';
+	ensure_turnip_data_exists(island, command);
+	if (!is_turnip_data_current(island, command)) {
+		message = 'Starting new week...\n';
+		reset_turnip_data(island, command);
+	}
+
 	island.past_turnip_pattern = pattern;
-	return 'Set!';
+	message += 'Set!'
+	return message;
 };
 orders.past_pattern.alias = ['padrão_anterior'];
 orders.past_pattern.mut = true;
@@ -168,22 +234,13 @@ orders.past_pattern.help = [
 	'Sets the turnip price pattern of the previous week'
 ];
 
-const PATTERN_NAMES = [
-	'Fluctuating', 'Large Spike', 'Decreasing', 'Small Spike'
-];
-
-function current_pattern_probabilities(all_probabilities) {
-	const patterns = [0,0,0,0];
-	for (let pattern of all_probabilities.slice(1)) {
-		patterns[pattern.pattern_number] = pattern.category_total_probability;
-	}
-	return patterns;
-}
-
-orders.probabilities = (arguments, island) => {
+orders.probabilities = (arguments, island, command) => {
 	if (arguments.length == 0) {
 		return 'Missing arguments';
 	}
+
+	const island_date = command.date.tz(island.timezone);
+	ensure_turnip_data_exists(island, command);
 
 	const type = arguments[0].toLowerCase();
 	const all_probabilities = turnip_probabilities(island);
@@ -195,7 +252,7 @@ orders.probabilities = (arguments, island) => {
 			for (let i = 0; i < 4; i++) {
 				const prob = (patterns[i] * 100)
 				if (prob >= 1) {
-					output += `${PATTERN_NAMES[i]}: ${prob.toFixed(2);}%\n`;
+					output += `${PATTERN_NAMES[i]}: ${prob.toFixed(2)}%\n`;
 				}
 			}
 			return output;
@@ -229,7 +286,8 @@ orders.probabilities = (arguments, island) => {
 				}
 			}
 
-			const today = +(moment().tz(island.timezone).format('d'));
+			let today = +(island_date.format('d'));
+			if (today == 0) today = 1;
 			let output = 'Your profit probability is:\n```\n';
 			for (let i = today*2; i < 14; i++) {
 				if (i % 2 == 0) {
@@ -257,7 +315,9 @@ orders.probabilities.help = [
 ];
 
 
-orders.max_sell_price = (arguments, island) => {
+orders.max_sell_price = (arguments, island, command) => {
+	const island_date = command.date.tz(island.timezone);
+	ensure_turnip_data_exists(island, command);
 	const all_probabilities = turnip_probabilities(island);
 	const max_price = all_probabilities[0].weekMax;
 	return `Your sell price this week will not be greater than ${max_price} bells`;
@@ -267,21 +327,27 @@ orders.max_sell_price.help = [
 	'Get the maximum selling price for turnips this week'
 ];
 
-orders.turnip_buy_price = (arguments, island) => {
+orders.turnip_buy_price = (arguments, island, command) => {
 	let [ price ] = arguments;
 	price = parseInt(price);
 	if (isNaN(price)) {
 		return 'Invalid buy price';
 	}
+
+	let message = start_new_week_if_needed(island, command);
+
 	island.current_buy_price = price;
-	return 'Set!';
+	message += 'Set buy price!'
+	return message;
 }
 orders.turnip_buy_price.alias = ['preço_compra_nabo'];
 orders.turnip_buy_price.help = [
 	'Set the price you bought turnips this week'
 ];
 
-orders.turnip_prophet = (arguments, island) => {
+orders.turnip_prophet = (arguments, island, command) => {
+	const island_date = command.date.tz(island.timezone);
+	ensure_turnip_data_exists(island, command);
 	const template = `[${island.name}'s turnip prices](https://turnipprophet.io?prices=PA&pattern=PR)`;
 	const prices = island.turnip_prices.slice(1).map(
 		x => (x === null || isNaN(x)) ? '' : x

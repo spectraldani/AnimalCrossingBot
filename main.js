@@ -1,4 +1,5 @@
 const fs = require('fs');
+const moment = require('moment-timezone');
 const { build_export_table } = require('./src/order_types.js');
 const { Bot } = require('./src/telegram.js');
 
@@ -70,6 +71,12 @@ if (!database.bot_token && !database.chat_id) {
 }
 const bot = new Bot(database.bot_token);
 
+moment.defineLocale('ac', {
+    parentLocale: 'en',
+    week: {doy: 3}
+});
+moment.locale('ac');
+
 (async () => {
 	const bot_commands = {
 		commands: order_lists
@@ -77,7 +84,7 @@ const bot = new Bot(database.bot_token);
 			.map(([k,v]) => ({command:k, description:v.help[0]}))
 	};
 	const response = await bot.post('setMyCommands', bot_commands);
-	console.log('Send commands!', await response.json());
+	console.log('Sent commands!', await response.json());
 })().catch(console.error);
 
 (async () => {
