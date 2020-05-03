@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "outDir": "./built",
+    "allowJs": true,
+    "lib": ["es2015"],
+    "target": "es2015",
+    "module": "commonjs",
+    "strict": false
+  },
+  "include": [
+    "./src/**/*"
+  ]
+}

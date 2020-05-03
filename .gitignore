@@ -1,6 +1,9 @@
 # Database with token
 data.json
 
+# Typescript built
+built
+
 # Created by https://www.gitignore.io/api/node,sublimetext
 # Edit at https://www.gitignore.io/?templates=node,sublimetext
 

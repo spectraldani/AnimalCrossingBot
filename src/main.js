@@ -1,7 +1,7 @@
 const fs = require('fs');
 const moment = require('moment-timezone');
-const { build_export_table } = require('./src/order_types.js');
-const { Bot } = require('./src/telegram.js');
+const { build_export_table } = require('./order_types.js');
+const { Bot } = require('./telegram.js');
 
 const orders = {};
 orders.as = function(arguments, island, command, database) {
@@ -30,8 +30,8 @@ orders.as.help = [
 
 const order_lists = [
 	orders,
-	require('./src/island_orders.js'),
-	require('./src/turnip_orders.js'),
+	require('./island_orders.js'),
+	require('./turnip_orders.js'),
 ];
 
 const all_orders = order_lists.flatMap(build_export_table);
@@ -84,12 +84,12 @@ moment.locale('ac');
 			.map(([k,v]) => ({command:k, description:v.help[0]}))
 	};
 	const response = await bot.post('setMyCommands', bot_commands);
-	console.log('Sent commands!', await response.json());
+	console.log('Sent commands!', await response);
 })().catch(console.error);
 
 (async () => {
 	for await (const command of bot.stream_commands()) {
-		if (command.chat.id == database['chat_id']) {
+		// if (command.chat.id == database['chat_id']) {
 			let response;
 			try {
 				response = handle_command(command, database, true);
@@ -102,7 +102,7 @@ moment.locale('ac');
 			} else {
 				console.warn('null reply',command)
 			}
-		}
+		// }
 		fs.writeFileSync('data.json', JSON.stringify(database));
 	}
 })().catch(console.error);

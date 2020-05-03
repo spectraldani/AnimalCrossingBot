@@ -2,15 +2,16 @@
   "name": "sentret-turnips",
   "version": "0.0.0",
   "description": "",
-  "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Daniel Augusto",
   "license": "MIT",
   "dependencies": {
+    "@types/moment": "^2.13.0",
+    "@types/moment-timezone": "^0.5.13",
+    "@types/node": "^13.13.4",
     "moment": "^2.24.0",
-    "moment-timezone": "^0.5.28",
-    "node-fetch": "^2.6.0"
+    "moment-timezone": "^0.5.28"
   }
 }
