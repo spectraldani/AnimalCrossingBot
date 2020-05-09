@@ -163,5 +163,3 @@ orders.close.mut = true;
 orders.close.help = [
     'Register your island as currently closed'
 ];
-
-module.exports = orders;

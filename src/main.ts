@@ -39,7 +39,6 @@ const order_lists = [
 
 function build_export_table(orders: Record<string, Order>): Record<string, Order> {
     const table: Record<string, Order> = {};
-
     for (const [key, order] of Object.entries(orders)) {
         table[key] = order;
         if (order.alias) {
@@ -48,7 +47,6 @@ function build_export_table(orders: Record<string, Order>): Record<string, Order
             }
         }
     }
-
     return table;
 }
 
