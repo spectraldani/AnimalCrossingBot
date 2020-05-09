@@ -1,56 +1,45 @@
-import {IIsland, Order} from "./types";
-import {Bot, Command} from "./telegram";
+import {IIsland} from "./types";
+import {Bot} from "./telegram";
 import * as fs from "fs";
 import * as moment from "moment-timezone";
 import {orders as turnip_orders} from "./turnips";
 import {orders as island_orders} from "./island_orders";
+import {Order, OrderList} from "./orders";
 
 
-const orders: Record<string, Order> = {};
-orders.as = async function (order_arguments, island, command, database) {
-    if (order_arguments.length < 2) {
-        return `Invalid number of arguments`;
-    }
+const orders = new OrderList();
 
-    let [island_name, order_key, ...next_order_arguments] = order_arguments;
-    const [user_id] = find_island_by_name(island_name, database.islands);
-
-    if (user_id === null) {
-        return `Unknown island \`${island_name}\``;
-    }
-
-    command.from = {id: user_id};
-    command.order = [order_key, next_order_arguments];
-
-    return await handle_command(command, database, false);
-};
-orders.as.alias = ['como'];
-orders.as.mut = true; // hack to avoid '/as x /as x ...'
-orders.as.help = [
-    'Run command as if you were in another island'
-];
-
-
-const order_lists = [
+const all_orders = OrderList.merge(
     orders,
     island_orders,
     turnip_orders,
-];
+);
 
-function build_export_table(orders: Record<string, Order>): Record<string, Order> {
-    const table: Record<string, Order> = {};
-    for (const [key, order] of Object.entries(orders)) {
-        table[key] = order;
-        if (order.alias) {
-            for (const alias of order.alias) {
-                table[alias] = order;
-            }
+
+orders.push({
+    name: 'as',
+    alias: ['como'],
+    mut: true,
+    async action(order_arguments, island, command, database) {
+        if (order_arguments.length < 2) {
+            return `Invalid number of arguments`;
         }
-    }
-    return table;
-}
 
-const all_orders = order_lists.map(build_export_table);
+        let [island_name, order_key, ...next_order_arguments] = order_arguments;
+        const [user_id] = find_island_by_name(island_name, database.islands);
+
+        if (user_id === null) {
+            return `Unknown island \`${island_name}\``;
+        }
+
+        command.from = {id: user_id};
+        command.order = [order_key, next_order_arguments];
+
+        return await all_orders.executeCommand(command, database, false);
+    },
+    help: ['Run command as if you were in another island'],
+});
+
 
 function find_island_by_name(name: string, islands: { [id: string]: IIsland; }) {
     name = name.toLowerCase();
@@ -60,24 +49,6 @@ function find_island_by_name(name: string, islands: { [id: string]: IIsland; }) 
         }
     }
     return [null, null];
-}
-
-async function handle_command(command: Command, database: any, can_mut: boolean) {
-    let [order_key, order_arguments] = command.order;
-    let island = database.islands[command.from.id];
-
-    for (const order_list of all_orders) {
-        const order = order_list[order_key];
-        if (order !== undefined) {
-            if (!can_mut && order.mut) {
-                return 'No permission to run that command';
-            } else {
-                return order(order_arguments, island, command, database);
-            }
-        }
-    }
-
-    return null;
 }
 
 
@@ -95,9 +66,10 @@ moment.locale('ac');
 
 (async () => {
     const bot_commands = {
-        commands: order_lists
-            .flatMap(x => Object.entries(x) as [string, Order][])
-            .map(([k, v]) => ({command: k, description: v.help?.[0] ?? ''}))
+        commands: all_orders.orders.map((c: Order) => ({
+            command: c.name,
+            description: c.help?.[0] ?? ''
+        }))
     };
     const response = await bot.post('setMyCommands', bot_commands);
     console.log('Sent commands!', await response);
@@ -108,7 +80,7 @@ moment.locale('ac');
         if (command.chat.id == database['chat_id'] || command.chat.id in database['islands']) {
             let response;
             try {
-                response = await handle_command(command, database, true);
+                response = await all_orders.executeCommand(command, database, true);
             } catch (e) {
                 console.error(e, command);
                 response = 'Error:```\n' + JSON.stringify(e, Object.getOwnPropertyNames(e)) + '```';

@@ -1,7 +1,7 @@
 import {PATTERN, TurnipPredictor} from "./turnips/predictor";
-import {FRUITS, IIsland, is_turnip_data_current, Island, Order} from "./types";
+import {FRUITS, IIsland, is_turnip_data_current, Island} from "./types";
 import {Moment} from "moment-timezone/moment-timezone";
-import {Command} from "./telegram";
+import {Order, OrderList} from "./orders";
 
 const fruit_emoji = {
     [FRUITS.APPLE]: '🍎',
@@ -93,73 +93,78 @@ function format_islands(island_array: IIsland[], date: Moment) {
     return message
 }
 
-export const orders: Record<string, Order> = {};
+export const orders = new OrderList();
 
-orders.register = (order_arguments, island, command, database) => {
-    let [name, raw_fruit, timezone] = order_arguments;
-    let fruit: FRUITS | undefined = (FRUITS as any)[raw_fruit.toUpperCase()];
+orders.push({
+    name: 'register',
+    alias: ['registrar'],
+    mut: true,
+    action(order_arguments, island, command, database) {
+        let [name, raw_fruit, timezone] = order_arguments;
+        let fruit: FRUITS | undefined = (FRUITS as any)[raw_fruit.toUpperCase()];
 
-    if (fruit === undefined) {
-        return `Invalid fruit \`${order_arguments[1]}\``;
-    }
-
-    database.islands[command.from.id] = new Island(command.from.username, name, fruit, timezone);
-    return `Registered ${name}!`;
-};
-orders.register.alias = ['registrar'];
-orders.register.mut = true;
-orders.register.help = [
-    'Register your island in our registry'
-];
-
-orders.list = (order_arguments, island, command, database) => {
-    const island_array = Object.values(database.islands).slice(0) as IIsland[];
-    if (order_arguments.length === 0) {
-        return format_islands(island_array, command.date);
-    } else {
-        switch (order_arguments[0].toLowerCase()) {
-            case 'aberto':
-            case 'open': {
-                return format_islands(island_array.filter(x => x.open), command.date);
-            }
-            default:
-                return 'Unknown argument';
+        if (fruit === undefined) {
+            return `Invalid fruit \`${order_arguments[1]}\``;
         }
-    }
-};
-orders.list.alias = ['ilhas', 'listar'];
-orders.list.help = [
-    'Lists all registered islands'
-];
 
-orders.me = (order_arguments, island, command) => {
-    return format_islands([island], command.date);
-};
-orders.me.alias = ['eu', 'my_island', 'minha_ilha'];
-orders.me.help = [
-    'Shows current information about your island'
-];
+        database.islands[command.from.id] = new Island(command.from.username, name, fruit, timezone);
+        return `Registered ${name}!`;
+    },
+    help: ['Register your island in our registry'],
+});
 
-orders.open = (order_arguments, island) => {
-    island['open'] = true;
-    if (order_arguments.length == 1) {
-        island['dodo'] = order_arguments[0];
-    }
-    return `Opened ${island.name}`;
-};
-orders.open.alias = ['abrir', 'dodo'];
-orders.open.mut = true;
-orders.open.help = [
-    'Register your island as currently open'
-];
+orders.push({
+    name: 'list',
+    alias: ['ilhas', 'listar'],
+    action(order_arguments, island, command, database) {
+        const island_array = Object.values(database.islands).slice(0) as IIsland[];
+        if (order_arguments.length === 0) {
+            return format_islands(island_array, command.date);
+        } else {
+            switch (order_arguments[0].toLowerCase()) {
+                case 'aberto':
+                case 'open': {
+                    return format_islands(island_array.filter(x => x.open), command.date);
+                }
+                default:
+                    return 'Unknown argument';
+            }
+        }
+    },
+    help: ['Lists all registered islands'],
+});
 
-orders.close = (order_arguments, island) => {
-    island['open'] = false;
-    island['dodo'] = null;
-    return `Closed ${island.name}`;
-};
-orders.close.alias = ['fechar'];
-orders.close.mut = true;
-orders.close.help = [
-    'Register your island as currently closed'
-];
+orders.push({
+    name: 'me',
+    alias: ['eu', 'my_island', 'minha_ilha'],
+    action(order_arguments, island, command) {
+        return format_islands([island], command.date);
+    },
+    help: ['Shows current information about your island'],
+});
+
+orders.push({
+    name: 'open',
+    alias: ['abrir', 'dodo'],
+    mut: true,
+    action(order_arguments, island) {
+        island['open'] = true;
+        if (order_arguments.length == 1) {
+            island['dodo'] = order_arguments[0];
+        }
+        return `Opened ${island.name}`;
+    },
+    help: ['Register your island as currently open'],
+});
+
+orders.push({
+    name: 'close',
+    alias: ['fechar'],
+    mut: true,
+    action(order_arguments, island) {
+        island['open'] = false;
+        island['dodo'] = null;
+        return `Closed ${island.name}`;
+    },
+    help: ['Register your island as currently closed'],
+});

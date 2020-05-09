@@ -1,6 +1,5 @@
 import {PATTERN} from "./turnips/predictor";
 import {Moment} from "moment-timezone/moment-timezone";
-import {Command} from "./telegram";
 
 export enum FRUITS {
     // Portuguese
@@ -67,12 +66,4 @@ export function is_turnip_data_current(island: IIsland, date: Moment) {
     const [week, year] = island.turnips!.week;
 
     return year === island_date.weekYear() ? week >= island_date.week() : false;
-}
-
-export interface Order {
-    mut?: boolean
-    alias?: string[]
-    help?: string[]
-
-    (order_arguments: string[], island: IIsland, command: Command, database: any): Promise<string | null> | string | null
 }
