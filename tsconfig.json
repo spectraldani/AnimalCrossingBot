@@ -3,13 +3,13 @@
     "outDir": "./built",
     "allowJs": true,
     "lib": [
-      "es2015",
+      "es2019",
       "dom"
     ],
-    "target": "es2015",
+    "target": "es2019",
     "module": "commonjs",
     "skipLibCheck": true,
-    "strict": false
+    "strict": true
   },
   "include": [
     "./src/**/*"
