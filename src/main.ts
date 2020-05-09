@@ -1,14 +1,13 @@
-import {IIsland} from "./types";
+import {IIsland, Order} from "./types";
 import {Bot, Command} from "./telegram";
 import * as fs from "fs";
 import * as moment from "moment-timezone";
-import {build_export_table} from "./order_types";
 import {orders as turnip_orders} from "./turnips";
 import {orders as island_orders} from "./island_orders";
 
 
-const orders: Record<string, any> = {};
-orders.as = async function (order_arguments: string[], island: IIsland, command: Command, database: any) {
+const orders: Record<string, Order> = {};
+orders.as = async function (order_arguments, island, command, database) {
     if (order_arguments.length < 2) {
         return `Invalid number of arguments`;
     }
@@ -26,7 +25,7 @@ orders.as = async function (order_arguments: string[], island: IIsland, command:
     return await handle_command(command, database, false);
 };
 orders.as.alias = ['como'];
-orders.as.can_mut = true; // hack to avoid '/as x /as x ...'
+orders.as.mut = true; // hack to avoid '/as x /as x ...'
 orders.as.help = [
     'Run command as if you were in another island'
 ];
@@ -38,7 +37,22 @@ const order_lists = [
     turnip_orders,
 ];
 
-const all_orders = order_lists.flatMap(build_export_table) as any[];
+function build_export_table(orders: Record<string, Order>): Record<string, Order> {
+    const table: Record<string, Order> = {};
+
+    for (const [key, order] of Object.entries(orders)) {
+        table[key] = order;
+        if (order.alias) {
+            for (const alias of order.alias) {
+                table[alias] = order;
+            }
+        }
+    }
+
+    return table;
+}
+
+const all_orders = order_lists.map(build_export_table);
 
 function find_island_by_name(name: string, islands: { [id: string]: IIsland; }) {
     name = name.toLowerCase();
@@ -60,7 +74,7 @@ async function handle_command(command: Command, database: any, can_mut: boolean)
             if (!can_mut && order.mut) {
                 return 'No permission to run that command';
             } else {
-                return await order(order_arguments, island, command, database);
+                return order(order_arguments, island, command, database);
             }
         }
     }
@@ -84,8 +98,8 @@ moment.locale('ac');
 (async () => {
     const bot_commands = {
         commands: order_lists
-            .flatMap(x => Object.entries(x) as [string, any][])
-            .map(([k, v]) => ({command: k, description: v.help[0]}))
+            .flatMap(x => Object.entries(x) as [string, Order][])
+            .map(([k, v]) => ({command: k, description: v.help?.[0] ?? ''}))
     };
     const response = await bot.post('setMyCommands', bot_commands);
     console.log('Sent commands!', await response);

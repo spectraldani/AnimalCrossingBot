@@ -1,5 +1,5 @@
 import {PATTERN, PATTERN_NAMES, TurnipPredictor} from './predictor';
-import {IIsland, is_turnip_data_current} from "../types";
+import {IIsland, is_turnip_data_current, Order} from "../types";
 import {Command} from "../telegram";
 
 enum WEEK_DAYS {
@@ -89,9 +89,9 @@ function start_new_week_if_needed(island: IIsland, command: Command) {
     return message;
 }
 
-export const orders: Record<string, any> = {};
+export const orders: Record<string, Order> = {};
 
-orders.turnip = (order_arguments: string[], island: IIsland, command: Command) => {
+orders.turnip = (order_arguments, island, command) => {
     let day: any, time: any, price: any;
 
     const island_date = command.date.tz(island.timezone);
@@ -142,7 +142,7 @@ orders.turnip.help = [
     'Register turnip prices for a given day'
 ];
 
-orders.past_pattern = (order_arguments: string[], island: IIsland, command: Command) => {
+orders.past_pattern = (order_arguments, island, command) => {
     const pattern_string = order_arguments.join(' ').replace(' ', '_').toUpperCase();
     const pattern = PATTERN[pattern_string as keyof typeof PATTERN] as PATTERN | undefined;
 
@@ -167,7 +167,7 @@ orders.past_pattern.help = [
     'Sets the turnip price pattern of the previous week'
 ];
 
-orders.probabilities = async (order_arguments: string[], island: IIsland, command: Command) => {
+orders.probabilities = async (order_arguments, island, command) => {
     if (order_arguments.length === 0) {
         return 'Missing arguments';
     }
@@ -237,7 +237,7 @@ orders.probabilities.help = [
 ];
 
 
-orders.max_sell_price = (order_arguments: string[], island: IIsland, command: Command) => {
+orders.max_sell_price = (order_arguments, island, command) => {
     ensure_turnip_data_exists(island, command);
     const predictor = new TurnipPredictor(island.turnips!);
     const all_probabilities = predictor.predict_all();
@@ -249,7 +249,7 @@ orders.max_sell_price.help = [
     'Get the maximum selling price for turnips this week'
 ];
 
-orders.turnip_buy_price = (order_arguments: string[], island: IIsland, command: Command) => {
+orders.turnip_buy_price = (order_arguments, island, command) => {
     const price = parseInt(order_arguments[0]);
     if (isNaN(price)) {
         return 'Invalid buy price';
@@ -266,7 +266,7 @@ orders.turnip_buy_price.help = [
     'Set the price you bought turnips this week'
 ];
 
-orders.turnip_prophet = (order_arguments: string[], island: IIsland, command: Command) => {
+orders.turnip_prophet = (order_arguments, island, command) => {
     ensure_turnip_data_exists(island, command);
     const template = `[${island.name}'s turnip prices](https://turnipprophet.io?prices=PA&pattern=PR)`;
     const prices = island.turnips!.prices.slice(1).map(

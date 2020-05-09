@@ -1,5 +1,5 @@
 import {PATTERN, TurnipPredictor} from "./turnips/predictor";
-import {FRUITS, IIsland, is_turnip_data_current, Island} from "./types";
+import {FRUITS, IIsland, is_turnip_data_current, Island, Order} from "./types";
 import {Moment} from "moment-timezone/moment-timezone";
 import {Command} from "./telegram";
 
@@ -93,9 +93,9 @@ function format_islands(island_array: IIsland[], date: Moment) {
     return message
 }
 
-export const orders: Record<string, any> = {};
+export const orders: Record<string, Order> = {};
 
-orders.register = (order_arguments: string[], island: IIsland, command: Command, database: any) => {
+orders.register = (order_arguments, island, command, database) => {
     let [name, raw_fruit, timezone] = order_arguments;
     let fruit: FRUITS | undefined = (FRUITS as any)[raw_fruit.toUpperCase()];
 
@@ -112,7 +112,7 @@ orders.register.help = [
     'Register your island in our registry'
 ];
 
-orders.list = (order_arguments: string[], island: IIsland, command: Command, database: any) => {
+orders.list = (order_arguments, island, command, database) => {
     const island_array = Object.values(database.islands).slice(0) as IIsland[];
     if (order_arguments.length === 0) {
         return format_islands(island_array, command.date);
@@ -129,10 +129,10 @@ orders.list = (order_arguments: string[], island: IIsland, command: Command, dat
 };
 orders.list.alias = ['ilhas', 'listar'];
 orders.list.help = [
-    'Lists all registred islands'
+    'Lists all registered islands'
 ];
 
-orders.me = (order_arguments: string[], island: IIsland, command: Command) => {
+orders.me = (order_arguments, island, command) => {
     return format_islands([island], command.date);
 };
 orders.me.alias = ['eu', 'my_island', 'minha_ilha'];
@@ -140,7 +140,7 @@ orders.me.help = [
     'Shows current information about your island'
 ];
 
-orders.open = (order_arguments: string[], island: IIsland) => {
+orders.open = (order_arguments, island) => {
     island['open'] = true;
     if (order_arguments.length == 1) {
         island['dodo'] = order_arguments[0];
@@ -153,7 +153,7 @@ orders.open.help = [
     'Register your island as currently open'
 ];
 
-orders.close = (order_arguments: string[], island: IIsland) => {
+orders.close = (order_arguments, island) => {
     island['open'] = false;
     island['dodo'] = null;
     return `Closed ${island.name}`;

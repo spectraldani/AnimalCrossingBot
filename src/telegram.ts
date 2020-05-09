@@ -3,14 +3,17 @@ import moment = require('moment-timezone');
 
 const base_url = 'https://api.telegram.org/bot';
 
-export type Order = [string, string[]];
-
 export interface Command {
     chat: any,
     from: any,
     message_id: number,
     date: moment.Moment,
-    order: Order
+    order: [string, string[]]
+}
+
+export interface TelegramReply {
+    ok: boolean,
+    result: any
 }
 
 export class Bot {
@@ -27,7 +30,7 @@ export class Bot {
         text: string,
         reply_to_message_id: number,
         disable_notification?: boolean,
-    ): Promise<any> {
+    ): Promise<TelegramReply> {
         const body: any = {
             chat_id: chat_id,
             text: text,
@@ -42,14 +45,14 @@ export class Bot {
             body['disable_notification'] = true;
         }
 
-        return this.post('sendMessage', body);
+        return this.post('sendMessage', body) as Promise<TelegramReply>;
     }
 
-    reply(msg: any, text: string): Promise<any> {
+    reply(msg: any, text: string): Promise<TelegramReply> {
         return this.send_message(msg.chat.id, text, msg.message_id);
     }
 
-    fetch_updates(): Promise<any> {
+    fetch_updates(): Promise<TelegramReply> {
         const options = {
             timeout: 10000
         };
@@ -86,7 +89,7 @@ export class Bot {
         }
     }
 
-    post(url: string, body: any) {
+    post(url: string, body: any): Promise<TelegramReply> {
         const json_body = JSON.stringify(body);
         const options = {
             method: 'POST',
@@ -121,7 +124,7 @@ export class Bot {
         });
     }
 
-    get(url: string, options?: https.RequestOptions): Promise<any> {
+    get(url: string, options?: https.RequestOptions): Promise<TelegramReply> {
         return new Promise((resolve, reject) => {
             https.get(`${this.bot_url}/${url}`, options || {}, r => {
                 r.setEncoding('utf8');
@@ -145,7 +148,7 @@ export class Bot {
 }
 
 
-function parse_order(x: string): Order | null {
+function parse_order(x: string): [string, string[]] | null {
     if (!x) {
         return null;
     }
