@@ -57,7 +57,7 @@ export class OrderList {
                 if (order) {
                     return order.action(its_arguments, island, command, database)
                 } else {
-                    return `Invalid sub-command ${command}`;
+                    return `Invalid sub-command \`${order_key}\``;
                 }
             }
         }
@@ -75,6 +75,7 @@ export class OrderList {
                 return order.action(order_arguments, island, command, database);
             }
         }
+        console.error(`Could not find command: ${command.order}`);
         return null;
     }
 }

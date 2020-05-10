@@ -79,10 +79,11 @@ function start_new_week_if_needed(island: IIsland, command: Command) {
     ensure_turnip_data_exists(island, command);
     if (!is_turnip_data_current(island, command.date)) {
         message = 'Starting new week...\n';
-        reset_turnip_data(island, command);
         const predictor = new TurnipPredictor(island.turnips!);
         const patterns = predictor.predict_pattern();
-        island.turnips!.past_pattern = patterns.findIndex(x => x > 0.99984);
+        const past_pattern = patterns.findIndex(x => x > 0.99984);
+        reset_turnip_data(island, command);
+        island.turnips!.past_pattern = past_pattern;
         if (island.turnips!.past_pattern !== -1) {
             message += `Your past pattern was ${PATTERN[island.turnips!.past_pattern]}\n`;
         }
@@ -179,7 +180,7 @@ orders.push(probabilities_sub.asOrder(
 
 probabilities_sub.push({
     name: 'pattern',
-    alias: ['padrão', 'padrão'],
+    alias: ['padrão', 'padrao'],
     action(order_arguments: string[], island, command) {
         ensure_turnip_data_exists(island, command);
         const predictor = new TurnipPredictor(island.turnips!);
@@ -204,8 +205,8 @@ probabilities_sub.push({
         const island_date = command.date.tz(island.timezone);
         const predictor = new TurnipPredictor(island.turnips!);
         let price;
-        if (order_arguments.length >= 2) {
-            price = parseInt(order_arguments[1]);
+        if (order_arguments.length >= 1) {
+            price = parseInt(order_arguments[0]);
             if (isNaN(price)) {
                 return `Invalid buy price \`${order_arguments[1]}\``;
             }
@@ -219,7 +220,7 @@ probabilities_sub.push({
 
         let today = +(island_date.format('d'));
         if (today === 0) today = 1;
-        let output = 'Your profit probability is:\n```\n';
+        let output = `Your profit probability for ${price} is:\n\`\`\`\n`;
         for (let i = today * 2; i < 14; i++) {
             if (i % 2 === 0) {
                 output += title_case(WEEK_DAYS[i / 2]);

@@ -9,13 +9,6 @@ import {Order, OrderList} from "./orders";
 
 const orders = new OrderList();
 
-const all_orders = OrderList.merge(
-    orders,
-    island_orders,
-    turnip_orders,
-);
-
-
 orders.push({
     name: 'as',
     alias: ['como'],
@@ -40,6 +33,11 @@ orders.push({
     help: ['Run command as if you were in another island'],
 });
 
+const all_orders = OrderList.merge(
+    orders,
+    island_orders,
+    turnip_orders,
+);
 
 function find_island_by_name(name: string, islands: { [id: string]: IIsland; }) {
     name = name.toLowerCase();
