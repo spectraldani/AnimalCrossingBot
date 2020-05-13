@@ -166,7 +166,7 @@ function parse_order(x: string): [string, string[]] | null {
     for (const part of parts.slice(1)) {
         switch (mode) {
             case 'scanning': {
-                if (part[0] == "'" || part[0] == '"') {
+                if (part[0] == '"') {
                     quoted = part.slice(1);
                     memory = part[0];
                     mode = 'quoting';

@@ -107,7 +107,9 @@ orders.push({
             return `Invalid fruit \`${order_arguments[1]}\``;
         }
 
-        database.islands[command.from.id] = new Island(command.from.username, name, fruit, timezone);
+        const username = command.from.username ?? command.from.first_name;
+
+        database.islands[command.from.id] = new Island(username, name, fruit, timezone);
         return `Registered ${name}!`;
     },
     help: ['Register your island in our registry'],

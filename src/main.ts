@@ -66,7 +66,7 @@ moment.locale('ac');
     const bot_commands = {
         commands: all_orders.orders.map((c: Order) => ({
             command: c.name,
-            description: c.help?.[0] ?? ''
+            description: c.help?.[0] ?? 'No description.'
         }))
     };
     const response = await bot.post('setMyCommands', bot_commands);
