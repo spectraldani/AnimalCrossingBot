@@ -4,6 +4,7 @@ import * as fs from "fs";
 import * as moment from "moment-timezone";
 import {orders as turnip_orders} from "./turnips";
 import {orders as island_orders} from "./island_orders";
+import {orders as catalog_orders} from "./catalog";
 import {Order, OrderList} from "./orders";
 
 
@@ -13,7 +14,7 @@ orders.push({
     name: 'as',
     alias: ['como'],
     mut: true,
-    async action(order_arguments, island, command, database) {
+    async action(order_arguments, island, command, island_memory, global_data) {
         if (order_arguments.length < 2) {
             return `Invalid number of arguments`;
         }
@@ -28,7 +29,7 @@ orders.push({
         command.from = {id: user_id};
         command.order = [order_key, next_order_arguments];
 
-        return await all_orders.executeCommand(command, database, false);
+        return await all_orders.executeCommand(command, global_data, false);
     },
     help: ['Run command as if you were in another island'],
 });
@@ -54,6 +55,7 @@ const database = JSON.parse(fs.readFileSync('data.json', 'utf8'));
 if (!database.bot_token && !database.chat_id) {
     throw "Missing bot_token or chat_id in database";
 }
+const local_memory = {};
 const bot = new Bot(database.bot_token);
 
 moment.defineLocale('ac', {
@@ -78,7 +80,7 @@ moment.locale('ac');
         if (command.chat.id == database['chat_id'] || command.chat.id in database['islands']) {
             let response;
             try {
-                response = await all_orders.executeCommand(command, database, true);
+                response = await all_orders.executeCommand(command, {database, memory: local_memory, bot}, true);
             } catch (e) {
                 console.error(e, command);
                 response = 'Error:```\n' + JSON.stringify(e, Object.getOwnPropertyNames(e)) + '```';

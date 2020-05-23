@@ -1,4 +1,4 @@
-import {Command} from "./telegram";
+import {Bot, Command} from "./telegram";
 import {IIsland} from "./types";
 
 export interface Order {
@@ -8,7 +8,19 @@ export interface Order {
     mut?: boolean
     subOrders?: Order[]
 
-    action(order_arguments: string[], island: IIsland, command: Command, database: any): Promise<string | null> | string | null
+    action(
+        order_arguments: string[],
+        island: IIsland,
+        command: Command,
+        island_memory: Record<string, any>,
+        global_data: GlobalData
+    ): Promise<string | null> | string | null
+}
+
+interface GlobalData {
+    database: any;
+    memory: Record<string, Record<string, any>>;
+    bot: Bot;
 }
 
 export class OrderList {
@@ -48,14 +60,14 @@ export class OrderList {
             help,
             mut,
             subOrders: self.orders,
-            action(order_arguments, island, command, database) {
+            action(order_arguments, island, command, island_memory, global_data) {
                 if (order_arguments.length < 1) {
                     return 'Invalid number of arguments';
                 }
                 const [order_key, ...its_arguments] = order_arguments;
                 const order = self.index[order_key];
                 if (order) {
-                    return order.action(its_arguments, island, command, database)
+                    return order.action(its_arguments, island, command, island_memory, global_data)
                 } else {
                     return `Invalid sub-command \`${order_key}\``;
                 }
@@ -63,19 +75,25 @@ export class OrderList {
         }
     }
 
-    async executeCommand(command: Command, database: any, can_mut: boolean) {
-        let [order_key, order_arguments] = command.order;
-        let island = database.islands[command.from.id];
+    async executeCommand(command: Command, global_data: GlobalData, can_mut: boolean) {
+        const [order_key, order_arguments] = command.order;
+        const island = global_data.database.islands[command.from.id];
+        const island_memory = ensure_island_memory(global_data.memory, command.from.id);
 
         const order = this.index[order_key];
         if (order !== undefined) {
             if (!can_mut && order.mut) {
                 return 'No permission to run that command';
             } else {
-                return order.action(order_arguments, island, command, database);
+                return order.action(order_arguments, island, command, island_memory, global_data);
             }
         }
         console.error(`Could not find command: ${command.order}`);
         return null;
     }
+}
+
+function ensure_island_memory(memory: Record<string, Record<string, any>>, id: number) {
+    memory[id] = memory[id] ?? {};
+    return memory[id];
 }

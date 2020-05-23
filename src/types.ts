@@ -29,6 +29,7 @@ export interface TurnipData {
 }
 
 export interface IIsland {
+    id: number
     username: string
     name: string
     native_fruit: FRUITS
@@ -41,16 +42,19 @@ export interface IIsland {
 }
 
 export class Island implements IIsland {
+    id: number;
     username: string;
     name: string;
     native_fruit: FRUITS;
-    timezone: string;
 
+    timezone: string;
     open: boolean = false;
     dodo: string | null = null;
+
     turnips: TurnipData | null = null;
 
-    constructor(username: string, island_name: string, fruit: FRUITS, timezone: string) {
+    constructor(id: number, username: string, island_name: string, fruit: FRUITS, timezone: string) {
+        this.id = id;
         this.username = username;
         this.name = island_name;
         this.native_fruit = fruit;

@@ -1,7 +1,7 @@
 import {PATTERN, TurnipPredictor} from "./turnips/predictor";
 import {FRUITS, IIsland, is_turnip_data_current, Island} from "./types";
 import {Moment} from "moment-timezone/moment-timezone";
-import {Order, OrderList} from "./orders";
+import {OrderList} from "./orders";
 
 const fruit_emoji = {
     [FRUITS.APPLE]: '🍎',
@@ -107,9 +107,10 @@ orders.push({
             return `Invalid fruit \`${order_arguments[1]}\``;
         }
 
+        const id = command.from.id;
         const username = command.from.username ?? command.from.first_name;
 
-        database.islands[command.from.id] = new Island(username, name, fruit, timezone);
+        database.islands[id] = new Island(id, username, name, fruit, timezone);
         return `Registered ${name}!`;
     },
     help: ['Register your island in our registry'],
@@ -149,11 +150,17 @@ orders.push({
     name: 'open',
     alias: ['abrir', 'dodo'],
     mut: true,
-    action(order_arguments, island) {
+    action(order_arguments, island, command, island_memory, {bot, database}) {
         island['open'] = true;
         if (order_arguments.length == 1) {
             island['dodo'] = order_arguments[0];
         }
+
+        island_memory.timeout = setTimeout(() => {
+            island['open'] = false;
+            island['dodo'] = null;
+            bot.send_message(database['chat_id'], `Auto-closed ${island.name}`);
+        }, 24 * 60 * 60 * 1000)
         return `Opened ${island.name}`;
     },
     help: ['Register your island as currently open'],
@@ -163,9 +170,13 @@ orders.push({
     name: 'close',
     alias: ['fechar'],
     mut: true,
-    action(order_arguments, island) {
+    action(order_arguments, island, command, island_memory) {
         island['open'] = false;
         island['dodo'] = null;
+        if (island_memory.timeout) {
+            clearTimeout(island_memory.timeout);
+            island_memory.timeout = undefined;
+        }
         return `Closed ${island.name}`;
     },
     help: ['Register your island as currently closed'],

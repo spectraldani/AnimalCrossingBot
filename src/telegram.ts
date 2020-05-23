@@ -28,7 +28,7 @@ export class Bot {
     send_message(
         chat_id: string,
         text: string,
-        reply_to_message_id: number,
+        reply_to_message_id?: number,
         disable_notification?: boolean,
     ): Promise<TelegramReply> {
         const body: any = {
