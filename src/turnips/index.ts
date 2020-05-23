@@ -85,7 +85,7 @@ function start_new_week_if_needed(island: IIsland, command: Command) {
         reset_turnip_data(island, command);
         island.turnips!.past_pattern = past_pattern;
         if (island.turnips!.past_pattern !== -1) {
-            message += `Your past pattern was ${PATTERN[island.turnips!.past_pattern]}\n`;
+            message += `Your past pattern was ${PATTERN[island.turnips!.past_pattern].replace('_', ' ')}\n`;
         }
     }
     return message;
@@ -98,33 +98,37 @@ orders.push({
     alias: ['nabos', 'nabo', 'turnips'],
     mut: true,
     action(order_arguments, island, command) {
-        let day: any, time: any, price: any;
+        let day: WEEK_DAYS, time: 'AM' | 'PM', price: number;
 
         const island_date = command.date.tz(island.timezone);
-        const [island_day, island_time] = island_date.format('d A').split(' ');
+        const island_day = +island_date.format('d') as typeof day;
+        const island_time = island_date.format('A') as 'AM' | 'PM';
 
         if (order_arguments.length === 3) {
-            [day, time, price] = order_arguments;
-            price = parseInt(price);
+            let [arg_day, arg_time, arg_price] = order_arguments;
+            price = parseInt(arg_price);
             if (isNaN(price)) {
                 return 'Invalid price';
             }
 
-            day = WEEK_DAYS[day.toUpperCase()];
+            day = (WEEK_DAYS as any)[arg_day.toUpperCase()];
             if (day === undefined) {
                 return 'Invalid day';
             }
 
-            time = time.toUpperCase();
-            if (time !== 'AM' && time !== 'PM') {
-                return `Invalid time: \`${time}\``;
+            arg_time = arg_time.toUpperCase();
+            if (arg_time === 'AM' || arg_time === 'PM') {
+                time = arg_time;
+            } else {
+                return `Invalid time: \`${arg_time}\``;
             }
         } else if (order_arguments.length === 1) {
             price = parseInt(order_arguments[0]);
             if (isNaN(price)) {
                 return `Invalid price: \`${price}\``;
             }
-            [day, time] = [island_day, island_time];
+            day = island_day;
+            time = island_time;
         } else {
             return 'Invalid number of arguments';
         }
@@ -240,16 +244,35 @@ probabilities_sub.push({
 });
 
 orders.push({
-    name: 'turnip_prophet',
-    alias: ['preço_máximo', 'max_price'],
+    name: 'max_price',
+    alias: ['preço_máximo'],
     action(order_arguments, island, command) {
         ensure_turnip_data_exists(island, command);
         const predictor = new TurnipPredictor(island.turnips!);
         const all_probabilities = predictor.predict_all();
-        const max_price = all_probabilities[0].weekMax;
+        const max_price = all_probabilities[0].prices.reduce(
+            (current, next) => Math.max(current, next.max),
+            0
+        )
         return `Your sell price this week will not be greater than ${max_price} bells`;
     },
     help: ['Get the maximum selling price for turnips this week'],
+});
+
+orders.push({
+    name: 'min_price',
+    alias: ['preço_mínimo'],
+    action(order_arguments, island, command) {
+        ensure_turnip_data_exists(island, command);
+        const predictor = new TurnipPredictor(island.turnips!);
+        const all_probabilities = predictor.predict_all();
+        const min_price = all_probabilities[0].prices.reduce(
+            (current, next) => Math.min(current, next.min),
+            Infinity
+        )
+        return `Your sell price this week will not be smaller than ${min_price} bells`;
+    },
+    help: ['Get the minimum selling price for turnips this week'],
 });
 
 
