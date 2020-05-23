@@ -18,9 +18,10 @@ export interface Order {
 }
 
 interface GlobalData {
-    database: any;
-    memory: Record<string, Record<string, any>>;
+    all_orders: OrderList;
     bot: Bot;
+    database: any;
+    local_memory: Record<string, Record<string, any>>;
 }
 
 export class OrderList {
@@ -78,7 +79,7 @@ export class OrderList {
     async executeCommand(command: Command, global_data: GlobalData, can_mut: boolean) {
         const [order_key, order_arguments] = command.order;
         const island = global_data.database.islands[command.from.id];
-        const island_memory = ensure_island_memory(global_data.memory, command.from.id);
+        const island_memory = ensure_island_memory(global_data.local_memory, command.from.id);
 
         const order = this.index[order_key];
         if (order !== undefined) {

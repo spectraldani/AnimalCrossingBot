@@ -1,4 +1,3 @@
-import {IIsland} from "./types";
 import {Bot} from "./telegram";
 import * as fs from "fs";
 import * as moment from "moment-timezone";
@@ -6,50 +5,14 @@ import {orders as turnip_orders} from "./turnips";
 import {orders as island_orders} from "./island_orders";
 import {orders as catalog_orders} from "./catalog";
 import {Order, OrderList} from "./orders";
+import {orders as administrative_orders} from "./administrative_orders";
 
-
-const orders = new OrderList();
-
-orders.push({
-    name: 'as',
-    alias: ['como'],
-    mut: true,
-    async action(order_arguments, island, command, island_memory, global_data) {
-        if (order_arguments.length < 2) {
-            return `Invalid number of arguments`;
-        }
-
-        let [island_name, order_key, ...next_order_arguments] = order_arguments;
-        const [user_id] = find_island_by_name(island_name, database.islands);
-
-        if (user_id === null) {
-            return `Unknown island \`${island_name}\``;
-        }
-
-        command.from = {id: user_id};
-        command.order = [order_key, next_order_arguments];
-
-        return await all_orders.executeCommand(command, global_data, false);
-    },
-    help: ['Run command as if you were in another island'],
-});
 
 const all_orders = OrderList.merge(
-    orders,
+    administrative_orders,
     island_orders,
     turnip_orders,
 );
-
-function find_island_by_name(name: string, islands: { [id: string]: IIsland; }) {
-    name = name.toLowerCase();
-    for (const [id, island] of Object.entries(islands)) {
-        if (island.name.toLowerCase() === name) {
-            return [id, island];
-        }
-    }
-    return [null, null];
-}
-
 
 const database = JSON.parse(fs.readFileSync('data.json', 'utf8'));
 if (!database.bot_token && !database.chat_id) {
@@ -80,7 +43,7 @@ moment.locale('ac');
         if (command.chat.id == database['chat_id'] || command.chat.id in database['islands']) {
             let response;
             try {
-                response = await all_orders.executeCommand(command, {database, memory: local_memory, bot}, true);
+                response = await all_orders.executeCommand(command, {database, local_memory, bot, all_orders}, true);
             } catch (e) {
                 console.error(e, command);
                 response = 'Error:```\n' + JSON.stringify(e, Object.getOwnPropertyNames(e)) + '```';
