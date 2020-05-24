@@ -44,7 +44,7 @@ orders.push({
         const [order_key] = order_arguments;
         const order = all_orders.index[order_key];
         let message = `*${order.name}*`;
-        message += `:\n${order.help?.[0]}`;
+        message += `:\n${order.help?.[0] ?? 'No description available'}`;
         if (order.alias !== undefined) {
             message += '\nAlias: ';
             message += order.alias.map(x => `_${x.replace('_', '_\\__')}_`).join(', ');
