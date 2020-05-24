@@ -81,11 +81,16 @@ function start_new_week_if_needed(island: IIsland, command: Command) {
         message = 'Starting new week...\n';
         const predictor = new TurnipPredictor(island.turnips!);
         const patterns = predictor.predict_pattern();
-        const past_pattern = patterns.findIndex(x => x > 0.99984);
-        reset_turnip_data(island, command);
-        island.turnips!.past_pattern = past_pattern;
-        if (island.turnips!.past_pattern !== -1) {
-            message += `Your past pattern was ${PATTERN[island.turnips!.past_pattern].replace('_', ' ')}\n`;
+        if (patterns === null) {
+            message += 'Your past turnip prices were invalid, your past pattern is UNKNOWN';
+            reset_turnip_data(island, command);
+        } else {
+            const past_pattern = patterns.findIndex(x => x > 0.99984);
+            reset_turnip_data(island, command);
+            island.turnips!.past_pattern = past_pattern;
+            if (island.turnips!.past_pattern !== -1) {
+                message += `Your past pattern is ${PATTERN[island.turnips!.past_pattern].replace('_', ' ')}\n`;
+            }
         }
     }
     return message;
@@ -189,6 +194,9 @@ probabilities_sub.push({
         ensure_turnip_data_exists(island, command);
         const predictor = new TurnipPredictor(island.turnips!);
         const patterns = predictor.predict_pattern();
+        if (patterns === null) {
+            return 'Couldn\'t complete order, your turnip prices are invalid';
+        }
         let output = 'Your current pattern is:\n';
         for (let i = 0; i < 4; i++) {
             const prob = (patterns[i] * 100);
@@ -221,6 +229,9 @@ probabilities_sub.push({
         }
 
         const probabilities = await predictor.probability_greater(price);
+        if (probabilities === null) {
+            return 'Couldn\'t complete order, your turnip prices are invalid';
+        }
 
         let today = +(island_date.format('d'));
         if (today === 0) today = 1;
@@ -250,6 +261,10 @@ orders.push({
         ensure_turnip_data_exists(island, command);
         const predictor = new TurnipPredictor(island.turnips!);
         const all_probabilities = predictor.predict_all();
+        if (all_probabilities === null) {
+            return 'Couldn\'t complete order, your turnip prices are invalid';
+        }
+
         const max_price = all_probabilities[0].prices.reduce(
             (current, next) => Math.max(current, next.max),
             0
@@ -266,6 +281,9 @@ orders.push({
         ensure_turnip_data_exists(island, command);
         const predictor = new TurnipPredictor(island.turnips!);
         const all_probabilities = predictor.predict_all();
+        if (all_probabilities === null) {
+            return 'Couldn\'t complete order, your turnip prices are invalid';
+        }
         const min_price = all_probabilities[0].prices.reduce(
             (current, next) => Math.min(current, next.min),
             Infinity
@@ -307,4 +325,27 @@ orders.push({
         return template.replace('PA', prices).replace('PR', pattern.toString());
     },
     help: ['Get a link of Turnip Prophet with your island data'],
+});
+
+orders.push({
+    name: 'clear_turnip_data',
+    alias: ['apagar_nabos'],
+    action(order_arguments, island, command) {
+        let prophet_link = null;
+        if (island.turnips && is_turnip_data_current(island, command.date)) {
+            const template = `[your previous data](https://turnipprophet.io?prices=PA&pattern=PR)`;
+            const prices = island.turnips!.prices.slice(1).map(
+                x => (x === null || isNaN(x)) ? '' : x
+            ).join('.');
+            const pattern = island.turnips!.past_pattern === null ? -1 : island.turnips!.past_pattern;
+            prophet_link = template.replace('PA', prices).replace('PR', pattern.toString());
+        }
+        reset_turnip_data(island, command);
+        let message = 'Your turnip data was cleared.'
+        if (prophet_link !== null) {
+            message += `\nHere is ${prophet_link}.`
+        }
+        return message;
+    },
+    help: ['Clear all the turnip related data of this week'],
 });

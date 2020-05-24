@@ -74,31 +74,38 @@ export class TurnipPredictor {
         );
     }
 
-    predict_all(): PredictedPattern[] {
+    predict_all(): PredictedPattern[] | null {
         const old_console = console;
         console = silent_console;
         const probabilities = this.turnip_prophet.analyze_possibilities();
         console = old_console;
         if (probabilities.length == 1) {
-            throw 'Impossible prices!';
+            return null;
         } else {
             return probabilities;
         }
     }
 
-    predict_pattern(): number[] {
-        const all_probabilities = this.predict_all().slice(1);
+    predict_pattern(): number[] | null {
+        const all_probabilities = this.predict_all();
+        if (all_probabilities === null) {
+            return null;
+        }
         const patterns: number[] = [0, 0, 0, 0];
-        for (let pattern of all_probabilities) {
+        for (let pattern of all_probabilities.slice(1)) {
             patterns[pattern.pattern_number] = pattern.category_total_probability as number;
         }
         return patterns;
     }
 
-    async probability_greater(x: number): Promise<number[]> {
-        const all_probabilities = this.predict_all().slice(1);
-        const pattern_probabilities = tf.tensor1d(all_probabilities.map(pp => pp.probability as number));
-        const in_pattern_probabilities = tf.tensor2d(all_probabilities.map(pp => pp.prices.map(p => uniform_distribution_greater(p, x))));
+    async probability_greater(x: number): Promise<number[] | null> {
+        const all_probabilities = this.predict_all();
+        if (all_probabilities === null) {
+            return null;
+        }
+        const probabilities = all_probabilities.slice(1);
+        const pattern_probabilities = tf.tensor1d(probabilities.map(pp => pp.probability as number));
+        const in_pattern_probabilities = tf.tensor2d(probabilities.map(pp => pp.prices.map(p => uniform_distribution_greater(p, x))));
 
         const marginals = pattern_probabilities.reshape([-1, 1]).mul(in_pattern_probabilities);
         return await marginals.sum(0).array() as number[];

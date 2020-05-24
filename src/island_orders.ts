@@ -52,30 +52,35 @@ function format_islands(island_array: IIsland[], date: Moment) {
             const index = 2 * (+weekday) + (ampm === 'AM' ? 0 : 1);
             const current_price = island.turnips.prices[index];
             const predictor = new TurnipPredictor(island.turnips);
-            const pattern = predictor.predict_pattern().findIndex(x => x >= 0.80);
-            message += 'Tnp:';
-            if (current_price !== null && !isNaN(current_price)) {
-                message += ` ${current_price}`;
+            let predictedPatterns = predictor.predict_pattern();
+            if (predictedPatterns === null) {
+                message += '❌ Invalid ❌';
             } else {
-                const predicted_current_price = predictor.predict_all()[0].prices[index];
-                message += ` [${predicted_current_price.min}-${predicted_current_price.max}]`;
-            }
-            switch (pattern) {
-                case PATTERN.FLUCTUATING: {
-                    message += ' ➡️';
-                    break;
+                const pattern = predictedPatterns.findIndex(x => x >= 0.99984);
+                message += 'Tnp:';
+                if (current_price !== null && !isNaN(current_price)) {
+                    message += ` ${current_price}`;
+                } else {
+                    const predicted_current_price = predictor.predict_all()![0].prices[index];
+                    message += ` [${predicted_current_price.min}-${predicted_current_price.max}]`;
                 }
-                case PATTERN.DECREASING: {
-                    message += ' ↘️';
-                    break;
-                }
-                case PATTERN.SMALL_SPIKE: {
-                    message += ' ↗️';
-                    break;
-                }
-                case PATTERN.LARGE_SPIKE: {
-                    message += ' ⬆️';
-                    break;
+                switch (pattern) {
+                    case PATTERN.FLUCTUATING: {
+                        message += ' ➡️';
+                        break;
+                    }
+                    case PATTERN.DECREASING: {
+                        message += ' ↘️';
+                        break;
+                    }
+                    case PATTERN.SMALL_SPIKE: {
+                        message += ' ↗️';
+                        break;
+                    }
+                    case PATTERN.LARGE_SPIKE: {
+                        message += ' ⬆️';
+                        break;
+                    }
                 }
             }
             message += '\n';
