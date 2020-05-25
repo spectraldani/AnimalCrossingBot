@@ -1,6 +1,6 @@
 import {PATTERN, PATTERN_NAMES, TurnipPredictor} from './predictor';
 import {IIsland, is_turnip_data_current} from "../types";
-import {Command} from "../telegram";
+import {BotActions, CallbackCommand, Command} from "../telegram";
 import {OrderList} from "../orders";
 
 enum WEEK_DAYS {
@@ -322,7 +322,15 @@ orders.push({
             x => (x === null || isNaN(x)) ? '' : x
         ).join('.');
         const pattern = island.turnips!.past_pattern === null ? -1 : island.turnips!.past_pattern;
-        return template.replace('PA', prices).replace('PR', pattern.toString());
+        return {
+            kind: 'message',
+            text: template.replace('PA', prices).replace('PR', pattern.toString()),
+            chat_id: command.chat.id,
+            reply_id: command.message_id,
+            disable_web_page_preview: true,
+            parse_mode: "Markdown"
+
+        };
     },
     help: ['Get a link of Turnip Prophet with your island data'],
 });
@@ -331,21 +339,57 @@ orders.push({
     name: 'clear_turnip_data',
     alias: ['apagar_nabos'],
     action(order_arguments, island, command) {
-        let prophet_link = null;
-        if (island.turnips && is_turnip_data_current(island, command.date)) {
-            const template = `[your previous data](https://turnipprophet.io?prices=PA&pattern=PR)`;
-            const prices = island.turnips!.prices.slice(1).map(
-                x => (x === null || isNaN(x)) ? '' : x
-            ).join('.');
-            const pattern = island.turnips!.past_pattern === null ? -1 : island.turnips!.past_pattern;
-            prophet_link = template.replace('PA', prices).replace('PR', pattern.toString());
-        }
-        reset_turnip_data(island, command);
-        let message = 'Your turnip data was cleared.'
-        if (prophet_link !== null) {
-            message += `\nHere is ${prophet_link}.`
-        }
-        return message;
+        const callback = (inline_command: CallbackCommand, response: boolean) => {
+            if (inline_command.from.id !== command.from.id) {
+                const ret: BotActions.AnswerCallbackQuery = {
+                    kind: 'answer_callback_query',
+                    query_id: inline_command.callback_query_id,
+                    text: 'You can\'t reply this query',
+                    show_alert: true
+                }
+                return ret;
+            }
+
+            const ret: BotActions.EditMessage = {
+                kind: "edit_message",
+                chat_id: command.chat.id,
+                message_id: command.message_id,
+                text: ""
+
+            }
+            if (response) {
+                let prophet_link = null;
+                if (island.turnips && is_turnip_data_current(island, command.date)) {
+                    const template = `[your previous data](https://turnipprophet.io?prices=PA&pattern=PR)`;
+                    const prices = island.turnips!.prices.slice(1).map(
+                        x => (x === null || isNaN(x)) ? '' : x
+                    ).join('.');
+                    const pattern = island.turnips!.past_pattern === null ? -1 : island.turnips!.past_pattern;
+                    prophet_link = template.replace('PA', prices).replace('PR', pattern.toString());
+                }
+                reset_turnip_data(island, command);
+                ret.text = 'Your turnip data was cleared'
+                if (prophet_link !== null) {
+                    ret.text += `\nHere is ${prophet_link}`
+                }
+            } else {
+                ret.text = 'Your tunip data was kept as is'
+            }
+            return ret;
+        };
+        const ret: BotActions.SendChoices = {
+            kind: "choices",
+            chat_id: command.chat.id,
+            reply_id: command.message_id,
+            text: "Are you sure?",
+            choices: [
+                {text: 'Yes', data: true},
+                {text: 'No', data: false},
+            ],
+            callback: callback
+
+        };
+        return ret;
     },
     help: ['Clear all the turnip related data of this week'],
 });

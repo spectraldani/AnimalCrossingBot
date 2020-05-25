@@ -1,5 +1,6 @@
-import {Bot, Command} from "./telegram";
+import {BotAction, Command} from "./telegram";
 import {IIsland} from "./types";
+import {Bot} from "./telegram/bot";
 
 export interface Order {
     name: string
@@ -14,7 +15,7 @@ export interface Order {
         command: Command,
         island_memory: Record<string, any>,
         global_data: GlobalData
-    ): Promise<string | null> | string | null
+    ): Promise<BotAction | string> | BotAction | string
 }
 
 interface GlobalData {
@@ -89,8 +90,7 @@ export class OrderList {
                 return order.action(order_arguments, island, command, island_memory, global_data);
             }
         }
-        console.error(`Could not find command: ${command.order}`);
-        return null;
+        return `Could not find command: ${command.order}`;
     }
 }
 
