@@ -7,7 +7,7 @@ export interface Order {
     alias?: string[]
     help?: string[]
     mut?: boolean
-    subOrders?: Order[]
+    asOrderList?: OrderList
 
     action(
         order_arguments: string[],
@@ -61,7 +61,7 @@ export class OrderList {
             alias,
             help,
             mut,
-            subOrders: self.orders,
+            asOrderList: self,
             action(order_arguments, island, command, island_memory, global_data) {
                 if (order_arguments.length < 1) {
                     return 'Invalid number of arguments';

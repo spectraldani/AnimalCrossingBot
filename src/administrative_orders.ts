@@ -41,10 +41,23 @@ orders.push({
     name: 'help',
     alias: ['ajuda'],
     action(order_arguments, island, command, island_memory, {all_orders}) {
-        const [order_key] = order_arguments;
-        const order = all_orders.index[order_key];
-        let message = `*${order.name}*`;
-        message += `:\n${order.help?.[0] ?? 'No description available'}`;
+        let order = all_orders.index[order_arguments[0]];
+        let order_name = order.name
+        for (const order_key of order_arguments.slice(1)) {
+            if (order.asOrderList !== undefined) {
+                order = order.asOrderList.index[order_key];
+                order_name += ' ' + order.name;
+            } else {
+                return `Error: ${order.name} doesn't have sub-commands`;
+            }
+        }
+
+        let message = `*${order_name}*`;
+        message += `:\n${order.help?.[0] ?? 'No description available'}\n`;
+        if (order.asOrderList !== undefined) {
+            message += '\nSub-commands: ';
+            message += order.asOrderList.orders.map(x => `_${x.name.replace('_', '_\\__')}_`).join(', ');
+        }
         if (order.alias !== undefined) {
             message += '\nAlias: ';
             message += order.alias.map(x => `_${x.replace('_', '_\\__')}_`).join(', ');
