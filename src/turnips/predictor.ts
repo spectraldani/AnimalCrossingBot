@@ -21,7 +21,6 @@ export const PATTERN_NAMES = {
 };
 
 interface PredictedPattern {
-    pattern_description: string,
     pattern_number: PATTERN,
     probability?: number,
     category_total_probability?: number,
@@ -36,10 +35,6 @@ declare class Predictor {
     analyze_possibilities(): PredictedPattern[];
 
 }
-
-// @ts-ignore
-global['i18next'] = {t: (x: string) => x.split('.')[1].toUpperCase()};
-
 
 const silent_console = {
     log() {
