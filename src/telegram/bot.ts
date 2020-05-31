@@ -170,7 +170,7 @@ export class Bot {
                 }
 
                 const [data_map, buttons] = await convert_choices(action.choices);
-                body.reply_markup = {inline_keyboard: [buttons]};
+                body.reply_markup = {inline_keyboard: buttons};
 
                 const result = await this.post('sendMessage', body);
                 if (result.ok) {
@@ -194,8 +194,18 @@ export class Bot {
                     parse_mode: action.parse_mode,
                     text: action.text,
                     reply_markup: {inline_keyboard: [[]]}
-
                 }
+
+                if (action.choices === undefined || action.choices.length == 0) {
+                    if (action.message_id in this.callback_memory) delete this.callback_memory[action.message_id];
+                } else {
+                    const callback_memory = this.callback_memory[action.message_id]!;
+                    const [data_map, buttons] = await convert_choices(action.choices);
+                    body.reply_markup = {inline_keyboard: buttons};
+                    callback_memory.data_map = data_map;
+                    if (action.callback !== undefined) callback_memory.callback = action.callback;
+                }
+
                 return await this.post('editMessageText', body);
             }
             case "edit_choices": {
@@ -210,8 +220,9 @@ export class Bot {
                 } else {
                     const callback_memory = this.callback_memory[action.message_id]!;
                     const [data_map, buttons] = await convert_choices(action.choices);
-                    body.reply_markup = {inline_keyboard: [buttons]};
+                    body.reply_markup = {inline_keyboard: buttons};
                     callback_memory.data_map = data_map;
+                    if (action.callback !== undefined) callback_memory.callback = action.callback;
                 }
                 return await this.post('editMessageReplyMarkup', body);
             }
@@ -271,17 +282,21 @@ function parse_order(x: string): [string, string[]] | null {
     return [command, order_arguments]
 }
 
-async function convert_choices(choices: MessageChoice[]): Promise<[Record<string, any>, InlineKeyboardButton[]]> {
+async function convert_choices(choices: MessageChoice[][]): Promise<[Record<string, any>, InlineKeyboardButton[][]]> {
     const buttons = [];
     const data_map: Record<string, any> = {};
-    for (const choice of choices) {
-        const callback_data = await nanoid(12);
-        if (choice.data !== undefined) {
-            data_map[callback_data] = choice.data;
-            buttons.push({text: choice.text, callback_data});
-        } else {
-            buttons.push({text: choice.text});
+    for (const choice_row of choices) {
+        const button_row = [];
+        for (const choice of choice_row) {
+            const callback_data = await nanoid(12);
+            if (choice.data !== undefined) {
+                data_map[callback_data] = choice.data;
+                button_row.push({text: choice.text, callback_data});
+            } else {
+                button_row.push({text: choice.text});
+            }
         }
+        buttons.push(button_row)
     }
     return [data_map, buttons];
 }

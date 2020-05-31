@@ -51,7 +51,7 @@ function format_islands(island_array: IIsland[], date: Moment) {
         }
         message += '\n';
 
-        if (island.turnips !== null && is_turnip_data_current(island, date)) {
+        if (island.turnips !== undefined && is_turnip_data_current(island, date)) {
             const [weekday, ampm] = island_date.format('d A').split(' ');
             const index = 2 * (+weekday) + (ampm === 'AM' ? 0 : 1);
             const current_price = island.turnips.prices[index];
@@ -190,7 +190,7 @@ orders.push({
         island['dodo'] = null;
         if (island_memory.timeout) {
             clearTimeout(island_memory.timeout);
-            island_memory.timeout = undefined;
+            delete island_memory.timeout;
         }
         return `Closed ${island.name}`;
     },

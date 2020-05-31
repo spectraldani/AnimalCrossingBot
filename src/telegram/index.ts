@@ -51,20 +51,23 @@ export namespace BotActions {
 
     export interface SendChoices extends BaseSendMessage {
         kind: 'choices'
-        choices: MessageChoice[]
+        choices: MessageChoice[][]
         callback: ChoiceCallback
     }
 
     export interface EditMessage extends BaseMessage {
         kind: 'edit_message'
         message_id: number
+        choices?: MessageChoice[][]
+        callback?: ChoiceCallback
     }
 
     export interface EditChoices {
         kind: 'edit_choices'
         chat_id: number | string
         message_id: number
-        choices: MessageChoice[]
+        choices: MessageChoice[][]
+        callback?: ChoiceCallback
     }
 
     export interface AnswerCallbackQuery {

@@ -1,6 +1,6 @@
 import {PATTERN, PATTERN_NAMES, TurnipPredictor} from './predictor';
-import {IIsland, is_turnip_data_current} from "../types";
-import {BotActions, CallbackCommand, Command} from "../telegram";
+import {IIsland, is_turnip_data_current, turnip_data_duration} from "../types";
+import {BotAction, BotActions, CallbackCommand, Command} from "../telegram";
 import {OrderList} from "../orders";
 
 enum WEEK_DAYS {
@@ -74,14 +74,17 @@ function ensure_turnip_data_exists(island: IIsland, command: Command) {
  * This function will initialize Turnip data and start a new week if needed
  * @returns {string} Empty message or description of actions taken
  */
-function start_new_week_if_needed(island: IIsland, command: Command) {
-    let message = '';
+function start_new_week_if_needed(island: IIsland, command: Command): string | undefined {
     ensure_turnip_data_exists(island, command);
-    if (!is_turnip_data_current(island, command.date)) {
-        message = 'Starting new week...\n';
+
+    const island_date = command.date.tz(island.timezone);
+    const date_delta = turnip_data_duration(island_date, island);
+
+    if (date_delta < 0) {
+        let message = 'Starting new week...\n';
         const predictor = new TurnipPredictor(island.turnips!);
         const patterns = predictor.predict_pattern();
-        if (patterns === null) {
+        if (patterns === null || date_delta < -1) {
             message += 'Your past turnip prices were invalid, your past pattern is UNKNOWN';
             reset_turnip_data(island, command);
         } else {
@@ -92,8 +95,10 @@ function start_new_week_if_needed(island: IIsland, command: Command) {
                 message += `Your past pattern is ${PATTERN[island.turnips!.past_pattern].replace('_', ' ')}\n`;
             }
         }
+        return message;
+    } else {
+        return undefined;
     }
-    return message;
 }
 
 export const orders = new OrderList();
@@ -138,7 +143,7 @@ orders.push({
             return 'Invalid number of arguments';
         }
 
-        let message = start_new_week_if_needed(island, command);
+        let message = start_new_week_if_needed(island, command) ?? '';
 
         if (day === 0) {
             island.turnips!.prices[0] = price;
@@ -304,7 +309,7 @@ orders.push({
             return 'Invalid buy price';
         }
 
-        let message = start_new_week_if_needed(island, command);
+        let message = start_new_week_if_needed(island, command) ?? '';
 
         island.turnips!.buy_price = price;
         message += 'Set buy price!';
@@ -339,23 +344,22 @@ orders.push({
     name: 'clear_turnip_data',
     alias: ['apagar_nabos'],
     action(order_arguments, island, command) {
-        const callback = (inline_command: CallbackCommand, response: boolean) => {
+        const callback = (inline_command: CallbackCommand, response: boolean): BotAction => {
             if (inline_command.from.id !== command.from.id) {
-                const ret: BotActions.AnswerCallbackQuery = {
+                return {
                     kind: 'answer_callback_query',
                     query_id: inline_command.callback_query_id,
                     text: 'You can\'t reply this query',
                     show_alert: true
-                }
-                return ret;
+                };
             }
 
             const ret: BotActions.EditMessage = {
                 kind: "edit_message",
                 chat_id: command.chat.id,
-                message_id: command.message_id,
-                text: ""
-
+                message_id: inline_command.message_id,
+                text: "",
+                parse_mode: 'Markdown'
             }
             if (response) {
                 let prophet_link = null;
@@ -373,23 +377,22 @@ orders.push({
                     ret.text += `\nHere is ${prophet_link}`
                 }
             } else {
-                ret.text = 'Your tunip data was kept as is'
+                ret.text = 'Your turnip data was kept as is'
             }
             return ret;
         };
-        const ret: BotActions.SendChoices = {
+        return {
             kind: "choices",
             chat_id: command.chat.id,
             reply_id: command.message_id,
             text: "Are you sure?",
-            choices: [
+            choices: [[
                 {text: 'Yes', data: true},
                 {text: 'No', data: false},
-            ],
+            ]],
             callback: callback
 
         };
-        return ret;
     },
     help: ['Clear all the turnip related data of this week'],
 });

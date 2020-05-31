@@ -1,5 +1,6 @@
 import {PATTERN} from "./turnips/predictor";
 import {Moment} from "moment-timezone/moment-timezone";
+import assert from "assert";
 
 export enum FRUITS {
     // Portuguese
@@ -38,7 +39,7 @@ export interface IIsland {
     open: boolean
     dodo: string | null
 
-    turnips: TurnipData | null
+    turnips?: TurnipData
 }
 
 export class Island implements IIsland {
@@ -51,7 +52,7 @@ export class Island implements IIsland {
     open: boolean = false;
     dodo: string | null = null;
 
-    turnips: TurnipData | null = null;
+    turnips?: TurnipData;
 
     constructor(id: number, username: string, island_name: string, fruit: FRUITS, timezone: string) {
         this.id = id;
@@ -65,9 +66,27 @@ export class Island implements IIsland {
     }
 }
 
+
+export function normalize_date_input(a: IIsland | Moment | [number, number]): [number, number] {
+    if ('id' in a) {
+        return a.turnips!.week
+    } else if ('week' in a && 'weekYear' in a) {
+        return [a.week(), a.weekYear()];
+    } else if (typeof a[0] === 'number') {
+        return a;
+    } else {
+        throw 'Invalid type';
+    }
+}
+
+export function turnip_data_duration(a: IIsland | Moment | [number, number], b: IIsland | Moment | [number, number]) {
+    const [a_week, a_year] = normalize_date_input(a);
+    const [b_week, b_year] = normalize_date_input(b);
+    assert(a_year == b_year, 'Years must match');
+    return b_week - a_week;
+}
+
 export function is_turnip_data_current(island: IIsland, date: Moment) {
     const island_date = date.tz(island.timezone);
-    const [week, year] = island.turnips!.week;
-
-    return year === island_date.weekYear() ? week >= island_date.week() : false;
+    return turnip_data_duration(island_date, island) >= 0;
 }

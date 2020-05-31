@@ -7,12 +7,14 @@ import {orders as administrative_orders} from './administrative_orders';
 import {Order, OrderList} from './orders';
 import {Result} from "./telegram/api_types";
 import {Bot} from "./telegram/bot";
+import {orders as catalog_orders} from './catalog';
 
 
 const all_orders = OrderList.merge(
     administrative_orders,
     island_orders,
     turnip_orders,
+    catalog_orders
 );
 
 const database = JSON.parse(fs.readFileSync('data.json', 'utf8'));
@@ -82,7 +84,7 @@ function uniformize_response(response: BotAction | string, command: BaseCommand)
                 if (!status.ok) console.error('Failed to send error message:', status.description);
                 continue;
             }
-            if (!status.ok) console.error('Failed to respond to update:', status.description);
+            if (!status.ok) console.error('Failed to respond to update:', response, status.description);
         }
         fs.writeFileSync('data.json', JSON.stringify(database));
     }
