@@ -29,6 +29,11 @@ export interface TurnipData {
     week: [number, number]
 }
 
+interface CatalogData {
+    owned: Record<string, any | undefined>
+    wishlist: Record<string, any | undefined>
+}
+
 export interface IIsland {
     id: number
     username: string
@@ -40,6 +45,7 @@ export interface IIsland {
     dodo: string | null
 
     turnips?: TurnipData
+    catalog_data?: CatalogData
 }
 
 export class Island implements IIsland {
@@ -53,6 +59,7 @@ export class Island implements IIsland {
     dodo: string | null = null;
 
     turnips?: TurnipData;
+    catalog_data?: CatalogData;
 
     constructor(id: number, username: string, island_name: string, fruit: FRUITS, timezone: string) {
         this.id = id;
