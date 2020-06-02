@@ -116,9 +116,13 @@ orders.push({
 
         if (order_arguments.length === 3) {
             let [arg_day, arg_time, arg_price] = order_arguments;
-            price = parseInt(arg_price);
-            if (isNaN(price)) {
-                return 'Invalid price';
+            if (arg_price === 'clear' || arg_price === 'apagar') {
+                price = NaN;
+            } else {
+                price = parseInt(arg_price);
+                if (isNaN(price)) {
+                    return 'Invalid price';
+                }
             }
 
             day = (WEEK_DAYS as any)[arg_day.toUpperCase()];
