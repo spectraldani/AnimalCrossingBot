@@ -1,6 +1,5 @@
-import {BotAction, Command} from "./telegram";
-import {IIsland} from "./types";
-import {Bot} from "./telegram/bot";
+import Bot from "./telegram/Bot";
+import {Command} from "./telegram/user_commands";
 
 export interface Order {
     name: string
@@ -10,19 +9,17 @@ export interface Order {
     asOrderList?: OrderList
 
     action(
+        bot: Bot,
         order_arguments: string[],
-        island: IIsland,
         command: Command,
-        island_memory: Record<string, any>,
-        global_data: GlobalData
-    ): Promise<BotAction | string> | BotAction | string
+        database: Database
+    ): Promise<void> | void
 }
 
-interface GlobalData {
-    all_orders: OrderList;
-    bot: Bot;
-    database: any;
-    local_memory: Record<string, Record<string, any>>;
+export interface Database {
+    get<T>(collection: string, id: string): Promise<T>
+    get_all<T>(collection: string): Promise<{[id: string] : T}>
+    put(collection: string, id: string, obj: any): Promise<void>
 }
 
 export class OrderList {
@@ -62,39 +59,50 @@ export class OrderList {
             help,
             mut,
             asOrderList: self,
-            action(order_arguments, island, command, island_memory, global_data) {
+            async action(bot, order_arguments, command, database) {
                 if (order_arguments.length < 1) {
-                    return 'Invalid number of arguments';
-                }
-                const [order_key, ...its_arguments] = order_arguments;
-                const order = self.index[order_key];
-                if (order) {
-                    return order.action(its_arguments, island, command, island_memory, global_data)
+                    await bot.send_message({
+                        chat_id: command.chat.id,
+                        reply_id: command.message_id,
+                        text: 'Invalid number of arguments'
+                    });
                 } else {
-                    return `Invalid sub-command \`${order_key}\``;
+                    const [order_key, ...its_arguments] = order_arguments;
+                    const order = self.index[order_key];
+                    if (order) {
+                        await order.action(bot, its_arguments, command, database);
+                    } else {
+                        await bot.send_message({
+                            chat_id: command.chat.id,
+                            reply_id: command.message_id,
+                            text: `Invalid sub-command \`${order_key}\``
+                        });
+                    }
                 }
             }
         }
     }
 
-    async executeCommand(command: Command, global_data: GlobalData, can_mut: boolean) {
+    async executeCommand(command: Command, bot: Bot, database: Database, can_mut: boolean) {
         const [order_key, order_arguments] = command.order;
-        const island = global_data.database.islands[command.from.id];
-        const island_memory = ensure_island_memory(global_data.local_memory, command.from.id);
 
         const order = this.index[order_key];
         if (order !== undefined) {
             if (!can_mut && order.mut) {
-                return 'No permission to run that command';
+                await bot.send_message({
+                    chat_id: command.chat.id,
+                    reply_id: command.message_id,
+                    text: 'No permission to run that command'
+                });
             } else {
-                return order.action(order_arguments, island, command, island_memory, global_data);
+                return order.action(bot, order_arguments, command, database);
             }
+        } else {
+            await bot.send_message({
+                chat_id: command.chat.id,
+                reply_id: command.message_id,
+                text: `Could not find command: ${command.order}`
+            });
         }
-        return `Could not find command: ${command.order}`;
     }
-}
-
-function ensure_island_memory(memory: Record<string, Record<string, any>>, id: number) {
-    memory[id] = memory[id] ?? {};
-    return memory[id];
 }

@@ -1,7 +1,8 @@
 import {PATTERN, TurnipPredictor} from "./turnips/predictor";
 import {FRUITS, IIsland, is_turnip_data_current, Island} from "./types";
 import {Moment} from "moment-timezone/moment-timezone";
-import {OrderList} from "./orders";
+import {Database, OrderList} from "./orders";
+import {User} from "./telegram/api_types";
 
 const fruit_emoji = {
     [FRUITS.APPLE]: '🍎',
@@ -108,19 +109,28 @@ orders.push({
     name: 'register',
     alias: ['registrar'],
     mut: true,
-    action(order_arguments, island, command, island_memory, {database}) {
+    async action(bot, order_arguments, command, database) {
         let [name, raw_fruit, timezone] = order_arguments;
         let fruit: FRUITS | undefined = (FRUITS as any)[raw_fruit.toUpperCase()];
 
         if (fruit === undefined) {
-            return `Invalid fruit \`${order_arguments[1]}\``;
+            await bot.send_message({
+                chat_id: command.chat.id,
+                reply_id: command.message_id,
+                text: `Invalid fruit \`${order_arguments[1]}\``
+            });
+            return;
         }
 
         const id = command.from.id;
         const username = command.from.username ?? command.from.first_name;
 
-        database.islands[id] = new Island(id, username, name, fruit, timezone);
-        return `Registered ${name}!`;
+        await set_island(database, command.from, new Island(id, username, name, fruit, timezone));
+        await bot.send_message({
+            chat_id: command.chat.id,
+            reply_id: command.message_id,
+            text: `Registered ${name}!`
+        });
     },
     help: ['Register your island in our registry'],
 });
@@ -128,19 +138,32 @@ orders.push({
 orders.push({
     name: 'list',
     alias: ['ilhas', 'listar'],
-    action(order_arguments, island, command, island_memory, {database}) {
-        const island_array = Object.values(database.islands).slice(0) as IIsland[];
+    async action(bot, order_arguments, command, database) {
+        const island_array = Object.values(await database.get_all<IIsland>('Island')).slice(0) as IIsland[];
         if (order_arguments.length === 0) {
-            return format_islands(island_array, command.date);
-        } else {
-            switch (order_arguments[0].toLowerCase()) {
-                case 'aberto':
-                case 'open': {
-                    return format_islands(island_array.filter(x => x.open), command.date);
-                }
-                default:
-                    return 'Unknown argument';
+            await bot.send_message({
+                chat_id: command.chat.id,
+                reply_id: command.message_id,
+                text: format_islands(island_array, command.date),
+                parse_mode: 'Markdown'
+            });
+        } else switch (order_arguments[0].toLowerCase()) {
+            case 'aberto':
+            case 'open': {
+                await bot.send_message({
+                    chat_id: command.chat.id,
+                    reply_id: command.message_id,
+                    text: format_islands(island_array.filter(x => x.open), command.date),
+                    parse_mode: 'Markdown'
+                });
+                break;
             }
+            default:
+                await bot.send_message({
+                    chat_id: command.chat.id,
+                    reply_id: command.message_id,
+                    text: 'Unknown argument'
+                });
         }
     },
     help: ['Lists all registered islands'],
@@ -149,8 +172,14 @@ orders.push({
 orders.push({
     name: 'me',
     alias: ['eu', 'my_island', 'minha_ilha'],
-    action(order_arguments, island, command) {
-        return format_islands([island], command.date);
+    async action(bot, order_arguments, command, database) {
+        const island = await get_island(database, command.from);
+        await bot.send_message({
+            chat_id: command.chat.id,
+            reply_id: command.message_id,
+            text: format_islands([island], command.date),
+            parse_mode: 'Markdown'
+        });
     },
     help: ['Shows current information about your island'],
 });
@@ -159,24 +188,18 @@ orders.push({
     name: 'open',
     alias: ['abrir', 'dodo'],
     mut: true,
-    action(order_arguments, island, command, island_memory, {bot}) {
+    async action(bot, order_arguments, command, database) {
+        const island = await get_island(database, command.from);
         island['open'] = true;
         if (order_arguments.length == 1) {
             island['dodo'] = order_arguments[0];
         }
-
-        island_memory.timeout = setTimeout(() => {
-            island['open'] = false;
-            island['dodo'] = null;
-            bot.process_action({
-                kind: 'message',
-                chat_id: command.chat.id,
-                reply_id: command.message_id,
-                text: `Auto-closed ${island.name}`,
-                parse_mode: 'Markdown'
-            });
-        }, 24 * 60 * 60 * 1000)
-        return `Opened ${island.name}`;
+        await set_island(database, command.from, island);
+        await bot.send_message({
+            chat_id: command.chat.id,
+            reply_id: command.message_id,
+            text: `Opened ${island.name}`
+        });
     },
     help: ['Register your island as currently open'],
 });
@@ -185,14 +208,24 @@ orders.push({
     name: 'close',
     alias: ['fechar'],
     mut: true,
-    action(order_arguments, island, command, island_memory) {
+    async action(bot, order_arguments, command, database) {
+        const island = await get_island(database, command.from);
         island['open'] = false;
         island['dodo'] = null;
-        if (island_memory.timeout) {
-            clearTimeout(island_memory.timeout);
-            delete island_memory.timeout;
-        }
-        return `Closed ${island.name}`;
+        await set_island(database, command.from, island);
+        await bot.send_message({
+            chat_id: command.chat.id,
+            reply_id: command.message_id,
+            text: `Closed ${island.name}`
+        });
     },
     help: ['Register your island as currently closed'],
 });
+
+export function get_island(database: Database, user: User): Promise<IIsland> {
+    return database.get('Island', String(user.id));
+}
+
+export function set_island(database: Database, user: User, island: IIsland): Promise<void> {
+    return database.put('Island', String(user.id), island);
+}

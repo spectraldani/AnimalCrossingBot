@@ -2,34 +2,32 @@ interface BaseUpdate {
     update_id: number
 }
 
-interface MessageUpdate extends BaseUpdate {
+export interface MessageUpdate extends BaseUpdate {
     message: Message
 }
 
-interface EditedMessageUpdate extends BaseUpdate {
+export interface EditedMessageUpdate extends BaseUpdate {
     edited_message: Message
 }
 
-interface CallbackQueryUpdate extends BaseUpdate {
+export interface CallbackQueryUpdate extends BaseUpdate {
     callback_query: CallbackQuery
 }
 
 export type Update = MessageUpdate | EditedMessageUpdate | CallbackQueryUpdate | BaseUpdate;
 
 
-interface Success<T> {
+export interface ResultSuccess<T> {
     ok: true
     description?: string
     result: T
 }
 
-interface Failure {
+export interface ResultFailure {
     ok: false
     description: string
     error_code: number
 }
-
-export type Result<T> = Success<T> | Failure;
 
 export interface User {
     id: number

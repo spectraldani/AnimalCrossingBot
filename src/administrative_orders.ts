@@ -17,22 +17,30 @@ orders.push({
     name: 'as',
     alias: ['como'],
     mut: true,
-    async action(order_arguments, island, command, island_memory, global_data) {
+    async action(bot, order_arguments, command, database) {
         if (order_arguments.length < 2) {
-            return `Invalid number of arguments`;
+            await bot.send_message({
+                chat_id: command.chat.id,
+                reply_id: command.message_id,
+                text: 'Invalid number of arguments'
+            });
+        } else {
+            let [island_name, order_key, ...next_order_arguments] = order_arguments;
+            const [user_id, other_island] = find_island_by_name(island_name, await database.get_all<IIsland>('Island'));
+
+            if (user_id === null || other_island === null) {
+                await bot.send_message({
+                    chat_id: command.chat.id,
+                    reply_id: command.message_id,
+                    text: `Unknown island \`${island_name}\``
+                });
+            } else {
+                command.from = {id: +user_id, first_name: other_island.username};
+                command.order = [order_key, next_order_arguments];
+
+                await bot.root_orders.executeCommand(command, bot, database, false);
+            }
         }
-
-        let [island_name, order_key, ...next_order_arguments] = order_arguments;
-        const [user_id, other_island] = find_island_by_name(island_name, global_data.database.islands);
-
-        if (user_id === null || other_island === null) {
-            return `Unknown island \`${island_name}\``;
-        }
-
-        command.from = {id: +user_id, first_name: other_island.username};
-        command.order = [order_key, next_order_arguments];
-
-        return await global_data.all_orders.executeCommand(command, global_data, false);
     },
     help: ['Run command as if you were in another island'],
 });
@@ -40,15 +48,20 @@ orders.push({
 orders.push({
     name: 'help',
     alias: ['ajuda'],
-    action(order_arguments, island, command, island_memory, {all_orders}) {
-        let order = all_orders.index[order_arguments[0]];
+    async action(bot, order_arguments, command) {
+        let order = bot.root_orders.index[order_arguments[0]];
         let order_name = order.name
         for (const order_key of order_arguments.slice(1)) {
             if (order.asOrderList !== undefined) {
                 order = order.asOrderList.index[order_key];
                 order_name += ' ' + order.name;
             } else {
-                return `Error: ${order.name} doesn't have sub-commands`;
+                await bot.send_message({
+                    chat_id: command.chat.id,
+                    reply_id: command.message_id,
+                    text: `Error: ${order.name} doesn't have sub-commands`
+                });
+                return;
             }
         }
 
@@ -62,7 +75,12 @@ orders.push({
             message += '\nAlias: ';
             message += order.alias.map(x => `_${x.replace('_', '_\\__')}_`).join(', ');
         }
-        return message;
+        await bot.send_message({
+            chat_id: command.chat.id,
+            reply_id: command.message_id,
+            text: message,
+            parse_mode: 'Markdown'
+        });
     },
     help: ['Displays information about a certain command']
 

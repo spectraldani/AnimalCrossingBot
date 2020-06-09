@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "outDir": "./built",
-    "allowJs": true,
+    "allowJs": false,
     "lib": [
       "es2019"
     ],
@@ -9,7 +9,14 @@
     "module": "commonjs",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "types/*"
+      ]
+    },
+    "sourceMap": true
   },
   "include": [
     "./src/**/*"
